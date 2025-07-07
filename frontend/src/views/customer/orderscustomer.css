@@ -1,0 +1,115 @@
+/* Top bar style */
+.top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px;
+    background: black;
+    color: white;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+  }
+  
+  .tabs span {
+    font-size: 18px;
+    font-weight: bold;
+  }
+  
+  .search-icon {
+    font-size: 22px;
+  }
+  
+  /* Orders cards */
+  .orders-feed {
+    padding: 15px;
+  }
+  
+  .order-cardd {
+    background: #fff;
+    color: white;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  }
+  
+  .order-info h4 {
+    font-size: 18px;
+    margin-bottom: 8px;
+  }
+  
+  .order-info p {
+    margin: 4px 0;
+    font-size: 14px;
+  }
+  
+  .order-actions {
+    margin-top: 12px;
+    text-align: right;
+  }
+  
+  .btn-view {
+    background-color: #DF468F;
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 14px;
+  }
+  
+  .no-orders {
+    color: white;
+    padding: 20px;
+    text-align: center;
+    font-size: 16px;
+  }.orders-page .top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px;
+    background: black;
+    color: white;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+  }
+  
+  .orders-page .tabs span {
+    font-size: 18px;
+    font-weight: bold;
+  }
+  
+  .orders-page .orders-feed {
+    padding: 15px;
+    overflow-y: auto;
+  }
+  
+  .orders-page .order-card {
+    background: #111;
+    color: white;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  }
+  
+  /* etc. */
+  
+.stat-card {
+  background: #222;
+  text-align: center;
+  padding: 18px;
+}
+
+.stat-card h3 {
+  font-size: 26px;
+  margin: 8px 0 0 0;
+  color: #DF468F;
+}
+
+.stat-card p {
+  margin: 0;
+  font-size: 14px;
+  color: #ddd;
+}

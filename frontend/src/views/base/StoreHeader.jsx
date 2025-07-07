@@ -1,103 +1,96 @@
-import React from 'react'
-import { Link } from 'react-router-dom'
-import { useAuthStore } from '../../store/auth'
-
-
+import React, { useEffect, useState, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../../store/auth';
+import logo from '../../assets/findit_logoo.png';
+import UserData from '../plugin/UserData';
+import apiInstance from '../../utils/axios';
+import './storeheader.css'
 
 function StoreHeader() {
+  const [isLoggedIn, user] = useAuthStore((state) => [state.isLoggedIn, state.user]);
+  const [profile, setProfile] = useState({});
+  const [search, setSearch] = useState("");
+  const [isHeaderVisible, setIsHeaderVisible] = useState(true); 
+  const navigate = useNavigate();
+  const navbarRef = useRef(null);
 
-    const [isLoggedIn, user] = useAuthStore((state) => [
-        state.isLoggedIn,
-        state.user,
-    ])
+  const handleSearchChange = (event) => setSearch(event.target.value);
+  const handleSearchSubmit = () => navigate(`/search?query=${search}`);
+
+  useEffect(() => {
+    if (UserData()?.user_id) {
+      apiInstance.get(`user/profile/${UserData().user_id}/`).then((res) => setProfile(res.data));
+    }
+
+    const handleScroll = () => {
+      if (window.scrollY > 100) {
+        setIsHeaderVisible(false); // Masquer si on descend
+      } else {
+        setIsHeaderVisible(true); // Afficher si on remonte
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   return (
-    <div>
-        <nav className="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div className="container">
-            <Link className="navbar-brand" to="/">
-                FindIt 
-            </Link>
-            <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-                <span className="navbar-toggler-icon" />
-            </button>
-            <div className="collapse navbar-collapse" id="navbarSupportedContent">
-                <ul className="navbar-nav me-auto mb-2 mb-lg-0">
-
-                    <li className="nav-item dropdown">
-                        <a className="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" >
-                            Account
-                        </a>
-                        <ul className="dropdown-menu" aria-labelledby="navbarDropdown">
-                            <li><Link to={'/customer/account/'} className="dropdown-item"><i className='fas fa-user'></i> Account</Link></li>
-                            <li><Link className="dropdown-item" to={`/customer/orders/`}><i className='fas fa-shopping-cart'></i> Orders</Link></li>
-                            <li><Link className="dropdown-item" to={`/customer/wishlist/`}><i className='fas fa-heart'></i> Wishlist</Link></li>
-                            <li><Link className="dropdown-item" to={`/customer/notifications/`}><i className='fas fa-bell fa-shake'></i> Notifications</Link></li>
-                            <li><Link className="dropdown-item" to={`/customer/settings/`}><i className='fas fa-gear fa-spin'></i> Settings</Link></li>
-                        </ul>
-                    </li>
-
-                    <li className="nav-item dropdown">
-                        <a className="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" >
-                            Vendor
-                        </a>
-                        <ul className="dropdown-menu" aria-labelledby="navbarDropdown">
-                            <li><Link className="dropdown-item" to="/vendor/dashboard/"> <i className='fas fa-user'></i> Dashboard</Link></li>
-                            <li><Link className="dropdown-item" to="/vendor/products/"> <i className='bi bi-grid-fill'></i> Products</Link></li>
-                            <li><Link className="dropdown-item" to="/vendor/product/new/"> <i className='fas fa-plus-circle'></i> Add Products</Link></li>
-                            <li><Link className="dropdown-item" to="/vendor/orders/"> <i className='fas fa-shopping-cart'></i> Orders</Link></li>
-                            <li><Link className="dropdown-item" to="/vendor/earning/"> <i className='fas fa-dollar-sign'></i> Earning</Link></li>
-                            <li><Link className="dropdown-item" to="/vendor/reviews/"> <i className='fas fa-star'></i> Reviews</Link></li>
-                            <li><Link className="dropdown-item" to="/vendor/coupon/"> <i className='fas fa-tag'></i> Coupon</Link></li>
-                            <li><Link className="dropdown-item" to="/vendor/notifications/"> <i className='fas fa-bell fa-shake'></i> Notifications</Link></li>
-                            <li><Link className="dropdown-item" to="/vendor/settings/"> <i className='fas fa-gear fa-spin'></i> Settings</Link></li>
-                        </ul>
-                    </li>
-                    <li>
-                    <Link className="nav-link" to="/explore">
-             <i className="fas fa-compass"></i> Explore
+    <nav 
+      ref={navbarRef} 
+      className={`navbar navbar-expand-lg store-navbar ${isHeaderVisible ? 'visible' : 'hidden'}`} 
+      style={{ 
+        backgroundColor: '#C3EBFF', 
+        position: 'fixed', 
+        top: 0, 
+        width: '100%', 
+        transition: 'transform 0.3s ease-in-out', 
+        transform: isHeaderVisible ? 'translateY(0)' : 'translateY(-100%)',
+        zIndex: 1000,
+        marginBottom:'800px',
+      }}
+    >
+      <div className="container-fluid">
+        <Link className="navbar-brand" to="/">
+          <img src={logo} alt="Logo" style={{ width: '150px', height: '100px' }} />
         </Link>
-        </li>
+        <form className="d-flex justify-content-center" style={{ flexGrow: 1 }}>
+          <input 
+            className="form-control me-2" 
+            type="text" 
+            placeholder="chemise, jean..." 
+            onChange={handleSearchChange} 
+            style={{ maxWidth: '600px', width: '100%' }} 
+          />
+          <button type='button' onClick={handleSearchSubmit} className="btn btn-outline-success me-2">
+            Rechercher
+          </button>
+        </form>
+        <div className="d-flex align-items-center">
+          {isLoggedIn() ? (
+            <>
+              <Link className="btn btn-outline-danger me-2" to="/add-product">
+                <i className="fas fa-plus"></i>
+              </Link>
+              <div className="dropdown">
+                <button className="btn p-0 dropdown-toggle" type="button" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                  <img src={profile?.image || 'https://via.placeholder.com/50'} alt="Profile" className="rounded-circle" style={{ width: '50px', height: '50px' }} />
+                </button>
+                <ul className="dropdown-menu" aria-labelledby="profileDropdown">
+                  <li><Link className="dropdown-item" to="/customer/account/">Account</Link></li>
+                  <li><Link className="dropdown-item" to="/vendor/dashboard/">Vendeur</Link></li>
+                  <li><Link className="dropdown-item" to="/logout">Logout</Link></li>
                 </ul>
-                <div className="d-flex">
-                    <input name='search' className="form-control me-2" type="text" placeholder="chemise, jean.." aria-label="Search" />
-                    <button className="btn btn-outline-success me-2" type="submit">Rechercher sur findit</button>
-                </div>
-                {isLoggedIn()
-                    ?  <Link className="btn btn-primary me-2" to="/logout">Logout</Link>
-                    :<>
-                    <Link className="btn btn-primary me-2" to="/login">Login</Link>
-                        <Link className="btn btn-primary me-2" to="/register">Register</Link>
-                        </>  
-                }
-              
-
-
-                {/* These are the button rendered based on users logged in status */}
-                {/* You could just un-comment it ;) */}
-
-                {/* {isLoggedIn()
-                    ?
-                    <>
-                        <Link className="btn btn-primary me-2" to={'/customer/account/'}>Account</Link>
-                        <Link className="btn btn-primary me-2" to="/logout">Logout</Link>
-                    </>
-                    :
-                    <>
-                        <Link className="btn btn-primary me-2" to="/login">Login</Link>
-                        <Link className="btn btn-primary me-2" to="/register">Register</Link>
-
-                    </>
-                } */}
-                {/*<span id='cart-total-items'>{cartCount || 0}</span>*/}
-                <Link className="btn btn-danger" to="/cart/">
-                    <i className='fas fa-shopping-cart'></i> 
-                </Link>
-            </div>
+              </div>
+            </>
+          ) : (
+            <Link className="btn btn-primary me-2" to="/login">
+              Login
+            </Link>
+          )}
         </div>
+      </div>
     </nav>
-    </div>
-  )
+  );
 }
 
-export default StoreHeader
+export default StoreHeader;

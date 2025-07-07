@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from store.models import *
 from vendor.models import *
-from userauths.serializer import ProfileSerializer
+from userauths.serializers import ProfileSerializer, UserSerializer
 
 class CategorySerializer(serializers.ModelSerializer):
 
@@ -35,11 +35,32 @@ class ColorSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class VendorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Vendor
+        fields = '__all__'
+
+    def get_fields(self):
+        fields = super().get_fields()
+        request = self.context.get("request")
+        if request and request.method == "POST":
+            for field in fields.values():
+                field.depth = 0
+        else:
+            for field in fields.values():
+                field.depth = 3
+        return fields
+
+
+
 class ProductSerializer(serializers.ModelSerializer):
     gallery = GallerySerializer(many=True, read_only=True)
     color = ColorSerializer(many=True, read_only=True)
     specification = SpecificationSerializer(many=True, read_only=True)
     size = SizeSerializer(many=True, read_only=True)
+    vendor = VendorSerializer(read_only=True)
+    url = serializers.SerializerMethodField()
+    
 
     class Meta:
         model = Product
@@ -65,17 +86,27 @@ class ProductSerializer(serializers.ModelSerializer):
                    'size',
                    'product_rating',
                    'rating_count',
+                   'orders',
                    'pid',
                    'slug',
-                   'date']
+                   'date',
+                   'url',
+                   ]
 
-        def __init__(self, *args, **kwargs):
-            super(ProductSerializer, self).__init__(*args, **kwargs)
+    def get_url(self, obj):
+        request = self.context.get("request")
+        return request.build_absolute_uri(obj.get_absolute_url())
+    
+    def get_fields(self):
+            fields = super().get_fields()
             request = self.context.get("request")
             if request and request.method == "POST":
-                self.Meta.depth = 0
+                for field in fields.values():
+                    field.depth = 0
             else:
-                self.Meta.depth = 3
+                for field in fields.values():
+                    field.depth = 3
+            return fields
 
 
 class CartSerializer(serializers.ModelSerializer):
@@ -114,7 +145,7 @@ class CartOrderItemSerializer(serializers.ModelSerializer):
 
 
 class CartOrderSerializer(serializers.ModelSerializer):
-    orderitem = CartOrderItemSerializer(many=True, read_only=True)
+
     class Meta:
         model = CartOrder
         fields = '__all__'
@@ -145,20 +176,6 @@ class ProductFaqSerializer(serializers.ModelSerializer):
         else:
             self.Meta.depth = 3
 
-
-class VendorSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Vendor
-        fields = '__all__'
-
-    def __init__(self, *args, **kwargs):
-        super(VendorSerializer, self).__init__(*args, **kwargs)
-        request = self.context.get("request")
-        if request and request.method == "POST":
-            self.Meta.depth = 0
-
-        else:
-            self.Meta.depth = 3
 
 
 class ReviewSerializer(serializers.ModelSerializer):
@@ -225,7 +242,32 @@ class NotificationSerializer(serializers.ModelSerializer):
         else:
             self.Meta.depth = 3
 
+class CommentSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    display_name = serializers.SerializerMethodField()
+    replies = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Comment
+        fields = ['id', 'user', 'content', 'created_at', 'replies', 'parent', 'display_name']
+
+    def get_display_name(self, obj):
+        presentation_vendor = obj.presentation.vendor
+        # Si le commentaire est du vendeur de la vidéo
+        if hasattr(obj.user, 'vendor') and obj.user.vendor == presentation_vendor:
+            return obj.user.vendor.name
+        return obj.user.full_name
+    
+    def get_replies(self, obj):
+        return CommentSerializer(obj.replies.all(), many=True).data
+
+
 class PresentationSerializer(serializers.ModelSerializer):
+    vendor = VendorSerializer(read_only=True)
+    comments = CommentSerializer(many=True, read_only=True)
+    likes_count = serializers.SerializerMethodField()
+    comments_count = serializers.SerializerMethodField()
+
     class Meta:
         model = Presentation
         fields = '__all__'
@@ -239,3 +281,10 @@ class PresentationSerializer(serializers.ModelSerializer):
 
         else:
             self.Meta.depth = 3
+
+    def get_likes_count(self, obj):
+        return obj.likes.count()
+
+
+    def get_comments_count(self, obj):
+        return Comment.objects.filter(presentation=obj).count()

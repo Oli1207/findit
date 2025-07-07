@@ -1,0 +1,138 @@
+/* Général */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: Arial, sans-serif;
+}
+
+.store-header {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.store-navbar {
+  background-color: rgba(195, 235, 255, 0.8); /* Légère transparence */
+  backdrop-filter: blur(10px); /* Effet de flou */
+  position: fixed;
+  top: 0;
+  width: 100%;
+  z-index: 1000;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+
+}
+
+.store-navbar.hidden {
+  transform: translateY(-100%);
+  opacity: 0;
+}
+
+/* Logo */
+.store-logo {
+  width: 120px;
+  height: auto;
+}
+
+/* Barre de recherche */
+.store-search-form {
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+.store-search-input {
+  width: 60%;
+  max-width: 500px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+.store-search-button {
+  padding: 10px 20px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.store-search-icon {
+  font-size: 20px;
+  color: #333;
+  cursor: pointer;
+}
+
+/* Actions utilisateur */
+.store-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.store-nav-icon {
+  font-size: 20px;
+  color: #333;
+}
+
+.store-profile-pic {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+}
+
+.store-login-button {
+  padding: 10px 15px;
+  background-color: #007BFF;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+/* Masquer la navbar quand elle doit disparaître */
+.store-navbar.hidden {
+  display: none;
+}
+
+/* Explorer */
+.store-explorer {
+  margin-top: 100px;
+  height: calc(100vh - 100px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.store-explorer > div {
+  width: 100%;
+  height: 100%;
+  overflow-y: scroll;
+  display: flex;
+  flex-direction: column;
+  scroll-snap-type: y mandatory;
+}
+
+.store-explorer > div > div {
+  flex: 0 0 100%;
+  height: 100vh;
+  scroll-snap-align: start;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #f8f8f8;
+}
+
+.store-navbar.visible {
+  transform: translateY(0);
+  opacity: 1;
+}

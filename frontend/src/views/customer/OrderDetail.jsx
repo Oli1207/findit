@@ -15,6 +15,7 @@ function OrderDetail() {
     useEffect(() => {
         apiInstance.get(`customer/order/${userData?.user_id}/${param.order_oid}/`).then((res) => {
             setOrder(res.data)
+            console.log(order)
             setOrderItems(res.data.orderitem)
             console.log(setOrderItems)
         })
@@ -50,7 +51,7 @@ function OrderDetail() {
                             <div className="">
                               <p className="mb-1">Total</p>
                               <h2 className="mb-0">
-                                {order.total}
+                                {order.price}
                                 <span
                                   className=""
                                   style={{ fontSize: "0.875rem" }}
@@ -61,27 +62,7 @@ function OrderDetail() {
                         </div>
                       </div>
                     </div>
-                    <div className="col-lg-3 mb-4 mb-lg-0">
-                      <div
-                        className="rounded shadow"
-                        style={{ backgroundColor: "#D1C4E9" }}
-                      >
-                        <div className="card-body">
-                          <div className="d-flex align-items-center">
-                            <div className="">
-                              <p className="mb-1">Payment Status</p>
-                              <h2 className="mb-0">
-                                {order?.payment_status?.toUpperCase()}
-                                <span
-                                  className=""
-                                  style={{ fontSize: "0.875rem" }}
-                                ></span>
-                              </h2>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                 
                     <div className="col-lg-3 mb-4 mb-lg-0">
                       <div
                         className="rounded shadow"
@@ -103,90 +84,10 @@ function OrderDetail() {
                         </div>
                       </div>
                     </div>
-                    <div className="col-lg-3 mb-4 mb-lg-0">
-                      <div
-                        className="rounded shadow"
-                        style={{ backgroundColor: "#bbfbeb" }}
-                      >
-                        <div className="card-body">
-                          <div className="d-flex align-items-center">
-                            <div className="">
-                              <p className="mb-1">Shipping Amount</p>
-                              <h2 className="mb-0">
-                              {order.shipping_amount}
-                                <span
-                                  className=""
-                                  style={{ fontSize: "0.875rem" }}
-                                ></span>
-                              </h2>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="col-lg-4 mb-4 mb-lg-0 mt-5">
-                      <div
-                        className="rounded shadow"
-                        style={{ backgroundColor: "#bbf7fb" }}
-                      >
-                        <div className="card-body">
-                          <div className="d-flex align-items-center">
-                            <div className="">
-                              <p className="mb-1">Tax Fee</p>
-                              <h2 className="mb-0">
-                              {order.tax_fee}
-                                <span
-                                  className=""
-                                  style={{ fontSize: "0.875rem" }}
-                                ></span>
-                              </h2>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="col-lg-4 mb-4 mb-lg-0 mt-5">
-                      <div
-                        className="rounded shadow"
-                        style={{ backgroundColor: "#eebbfb" }}
-                      >
-                        <div className="card-body">
-                          <div className="d-flex align-items-center">
-                            <div className="">
-                              <p className="mb-1">Service Fee</p>
-                              <h2 className="mb-0">
-                              {order.service_fee}
-                                <span
-                                  className=""
-                                  style={{ fontSize: "0.875rem" }}
-                                ></span>
-                              </h2>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="col-lg-4 mb-4 mb-lg-0 mt-5">
-                      <div
-                        className="rounded shadow"
-                        style={{ backgroundColor: "#bbc5fb" }}
-                      >
-                        <div className="card-body">
-                          <div className="d-flex align-items-center">
-                            <div className="">
-                              <p className="mb-1">Discount Fee</p>
-                              <h2 className="mb-0">
-                              {order.saved}
-                                <span
-                                  className=""
-                                  style={{ fontSize: "0.875rem" }}
-                                ></span>
-                              </h2>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                   
+                  
+                  
+                   
                   </div>
                 </section>
                 {/* Section: Summary */}
@@ -205,31 +106,31 @@ function OrderDetail() {
                         </thead>
                         <tbody>
                             
-                        {orderItems?.map((o, index) => (
-                              <tr key={index}>
+                        
+                              <tr >
                               <td>
                                 <div className="d-flex align-items-center">
                                   <img
-                                    src={o.product.image}
+                                    src={order.product?.image}
                                     style={{ width: 80 , height:80, objectFit:"cover", borderRadius:"10px"}}
                                     alt=""
                                   />
                                   <p className="text-muted mb-0">
-                                    {o.product.title}
+                                    {order.product?.title}
                                   </p>
                                 </div>
                               </td>
                               <td>
-                                <p className="fw-normal mb-1">{o.price}</p>
+                                <p className="fw-normal mb-1">{order.product?.price}</p>
                               </td>
                               <td>
-                                <p className="fw-normal mb-1">{o.qty}</p>
+                                <p className="fw-normal mb-1">{order.qty}</p>
                               </td>
                               <td>
-                                <span className="fw-normal mb-1">{o.sub_total}</span>
+                                <p className="fw-normal mb-1">{order.price}</p>
                               </td>
                             </tr>
-                        ))}
+                        
                          
                         </tbody>
                       </table>

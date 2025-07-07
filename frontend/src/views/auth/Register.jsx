@@ -1,98 +1,132 @@
-import React,{useState, useEffect} from 'react';
+import React, { useState, useEffect } from 'react';
 import { register } from '../../utils/auth';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/auth';
 
-
 function Register() {
-  const [full_name, setFullname] = useState("")
-  const [email, setEmail] = useState("")
-  const [phone, setMobile] = useState("")
-  const [password, setPassword] = useState("")
-  const [password2, setPassword2] = useState("")
+  const [full_name, setFullname] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setMobile] = useState("");
+  const [password, setPassword] = useState("");
+  const [password2, setPassword2] = useState("");
 
-  const [isLoading, setIsLoading] = useState(false)
-  const navigate = useNavigate()
-  const isLoggedIn = useAuthStore((state) => state.isLoggedIn)
-    
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
 
   useEffect(() => {
-    if(isLoggedIn()){
-      navigate("/")
+    if (isLoggedIn()) {
+      navigate("/");
     }
-  },[])
+  }, [isLoggedIn, navigate]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setIsLoading(true)
+    e.preventDefault();
+    setIsLoading(true);
 
-    const {error} = await register(
+    const { error } = await register(
       full_name,
       email,
       phone,
       password,
-      password2,
-    )
-    if(error){
-      alert(JSON.stringify(error))
-    }else{
-      navigate('/')
+      password2
+    );
+    
+    setIsLoading(false);
+    if (error) {
+      alert(JSON.stringify(error));
+    } else {
+      navigate('/');
     }
-  }
+  };
 
   return (
-    <>
-      <div>Register</div>
-      <form onSubmit={handleSubmit}>
-        <input 
-        type='text'
-        placeholder='Nom et prénoms' 
-        name='' 
-        id=''
-        onChange={(e) => setFullname(e.target.value)}
-        />
-        <br/>
-        <br />
-        <input 
-        type='email'
-        placeholder='Email' 
-        name='' 
-        id=''
-        onChange={(e) => setEmail(e.target.value)}
-        />
-        <br/>
-        <br/>
-        <input 
-        type='number'
-        placeholder='Numéro ' 
-        name='' 
-        id=''
-        onChange={(e) => setMobile(e.target.value)}
-        />
-        <br/>
-        <br/>
-        <input 
-        type='password'
-        placeholder='Mot de passe' 
-        name='' 
-        id=''
-        onChange={(e) => setPassword(e.target.value)}
-        />
-        <br/>
-        <br/>
-        <input 
-        type='password'
-        placeholder='Confirmez votre mot de passe' 
-        name='' 
-        id=''
-        onChange={(e) => setPassword2(e.target.value)}
-        />
-        <br />
-        <br />
-        <button type='submit'>Créer un compte</button>
-      </form>
-    </>
-  )
+    <div className="container" style={{paddingTop:"80px", marginTop: "50px", display: "flex", justifyContent: "center" }}>
+      <div className="row w-100">
+        {/* Left side with catchy message */}
+        <div className="col-md-6 d-flex align-items-center">
+          <div>
+            <h2>Rejoignez notre communauté !</h2>
+            <p>
+              Créez un compte dès maintenant et accédez à tous nos services exclusifs.
+              C'est rapide, facile, et vous ne le regretterez pas !
+            </p>
+          </div>
+        </div>
+
+        {/* Right side with the form */}
+        <div className="col-md-6">
+          <div className="p-4 border rounded shadow-sm">
+            <h3 className="text-center">Créer un compte</h3>
+            <form onSubmit={handleSubmit}>
+              <div className="mb-3">
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  placeholder="Nom et Prénoms" 
+                  value={full_name} 
+                  onChange={(e) => setFullname(e.target.value)} 
+                  required 
+                />
+              </div>
+
+              <div className="mb-3">
+                <input 
+                  type="email" 
+                  className="form-control" 
+                  placeholder="Email" 
+                  value={email} 
+                  onChange={(e) => setEmail(e.target.value)} 
+                  required 
+                />
+              </div>
+
+              <div className="mb-3">
+                <input 
+                  type="number" 
+                  className="form-control" 
+                  placeholder="Numéro de téléphone" 
+                  value={phone} 
+                  onChange={(e) => setMobile(e.target.value)} 
+                  required 
+                />
+              </div>
+
+              <div className="mb-3">
+                <input 
+                  type="password" 
+                  className="form-control" 
+                  placeholder="Mot de passe" 
+                  value={password} 
+                  onChange={(e) => setPassword(e.target.value)} 
+                  required 
+                />
+              </div>
+
+              <div className="mb-3">
+                <input 
+                  type="password" 
+                  className="form-control" 
+                  placeholder="Confirmer le mot de passe" 
+                  value={password2} 
+                  onChange={(e) => setPassword2(e.target.value)} 
+                  required 
+                />
+              </div>
+
+              <button type="submit" className="btn btn-primary w-100" disabled={isLoading}>
+                {isLoading ? "Création en cours..." : "Créer un compte"}
+              </button>
+            </form>
+            
+            <div className="text-center mt-3">
+              <p>Vous avez déjà un compte? <a href="/login">Se connecter</a></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
-export default Register
+export default Register;

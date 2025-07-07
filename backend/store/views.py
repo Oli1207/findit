@@ -4,9 +4,11 @@ from userauths.models import *
 from decimal import Decimal
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
-
+from rest_framework.decorators import api_view, permission_classes
 from store.models import *
 from store.serializers import *
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
 
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -16,7 +18,7 @@ import cv2
 import numpy as np
 import stripe
 from rest_framework.parsers import MultiPartParser, FormParser
-
+from concurrent.futures import ThreadPoolExecutor
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
 def send_notification(user=None, vendor=None, order=None, order_item=None):
@@ -26,6 +28,34 @@ def send_notification(user=None, vendor=None, order=None, order_item=None):
         order=order,
         order_item=order_item
     )    
+
+# from rest_framework.decorators import api_view, permission_classes
+# from rest_framework.permissions import AllowAny
+# from rest_framework.response import Response
+# from rest_framework import status
+
+# from product.models import Product
+# from userauths.models import User
+# from product.serializers import ProductSerializer
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def products_from_followed_vendors(request, user_id):
+    try:
+        user = User.objects.get(id=user_id)
+        # Récupérer les produits dont le vendeur est suivi par l'utilisateur
+        products = Product.objects.filter(vendor__followers=user).order_by('-date')
+
+        serializer = ProductSerializer(products, many=True, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    except User.DoesNotExist:
+        return Response({'error': 'Utilisateur non trouvé.'}, status=status.HTTP_404_NOT_FOUND)
+
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class CategoryListAPIView(generics.ListAPIView):
     queryset = Category.objects.all()
@@ -85,6 +115,36 @@ class PresentationListAPIView(generics.ListAPIView):
     queryset = Presentation.objects.all()
     serializer_class = PresentationSerializer
     permission_classes = [AllowAny]
+
+class LikePresentationAPIView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, pk):
+        try:
+            pres = Presentation.objects.get(pk=pk)
+            user_id = request.data.get("user")
+
+            user = User.objects.get(id=user_id)
+
+            if user in pres.likes.all():
+                pres.likes.remove(user)
+                liked = False
+            else:
+                pres.likes.add(user)
+                liked = True
+            return Response({"liked": liked, "likes_count": pres.likes.count()})
+        except (Presentation.DoesNotExist, User.DoesNotExist):
+            return Response(status=404)
+
+
+class CommentCreateAPIView(generics.CreateAPIView):
+    serializer_class = CommentSerializer
+    permission_classes = [AllowAny]
+
+    def perform_create(self, serializer):
+        presentation_id = self.request.data.get("presentation")
+        user_id = self.request.data.get("user")
+        serializer.save(user_id=user_id, presentation_id=presentation_id)
 
 class CartAPIView(generics.ListCreateAPIView):
     queryset = Cart.objects.all()
@@ -237,103 +297,103 @@ class CartDetailView(generics.RetrieveAPIView):
     def calculate_total(self, cart_item):
         return cart_item.total
     
-class CartItemDeleteAPIView(generics.DestroyAPIView):
-    serializer_class = CartSerializer
-    lookup_field = 'cart_id'
+# class CartItemDeleteAPIView(generics.DestroyAPIView):
+#     serializer_class = CartSerializer
+#     lookup_field = 'cart_id'
 
-    def get_object(self):
-        cart_id = self.kwargs['cart_id']
-        item_id = self.kwargs['item_id']
-        user_id = self.kwargs.get('user_id')
+#     def get_object(self):
+#         cart_id = self.kwargs['cart_id']
+#         item_id = self.kwargs['item_id']
+#         user_id = self.kwargs.get('user_id')
 
-        if user_id:
-            user = User.objects.get(id=user_id)
-            cart = Cart.objects.get(id=item_id, cart_id=cart_id, user=user)
-        else:
-            cart = Cart.objects.get(id=item_id, cart_id=cart_id)
+#         if user_id:
+#             user = User.objects.get(id=user_id)
+#             cart = Cart.objects.get(id=item_id, cart_id=cart_id, user=user)
+#         else:
+#             cart = Cart.objects.get(id=item_id, cart_id=cart_id)
 
-        return cart
+#         return cart
 
 
-class CreateOrderAPIView(generics.CreateAPIView):
-    serializer_class = CartOrderSerializer
-    queryset = CartOrder.objects.all()
-    permission_classes = [AllowAny]
+# class CreateOrderAPIView(generics.CreateAPIView):
+#     serializer_class = CartOrderSerializer
+#     queryset = CartOrder.objects.all()
+#     permission_classes = [AllowAny]
 
-    def create(self, request):
-        payload = request.data
+#     def create(self, request):
+#         payload = request.data
 
-        full_name = payload['full_name']
-        email = payload['email']
-        mobile = payload['mobile']
-        address = payload['address']
-        city = payload['city']
-        state = payload['state']
-        country = payload['country']
-        cart_id = payload['cart_id']
-        user_id = payload['user_id']
+#         full_name = payload['full_name']
+#         email = payload['email']
+#         mobile = payload['mobile']
+#         address = payload['address']
+#         city = payload['city']
+#         state = payload['state']
+#         country = payload['country']
+#         cart_id = payload['cart_id']
+#         user_id = payload['user_id']
 
-        try:
-            user = User.objects.get(id=user_id)
-        except:
-            user = None
+#         try:
+#             user = User.objects.get(id=user_id)
+#         except:
+#             user = None
 
-        cart_items = Cart.objects.filter(cart_id=cart_id)
+#         cart_items = Cart.objects.filter(cart_id=cart_id)
 
-        total_shipping = Decimal(0.00)
-        total_tax = Decimal(0.00)
-        total_service_fee = Decimal(0.00)
-        total_sub_total = Decimal(0.00)
-        total_initial_total = Decimal(0.00)
-        total_total = Decimal(0.00)
+#         total_shipping = Decimal(0.00)
+#         total_tax = Decimal(0.00)
+#         total_service_fee = Decimal(0.00)
+#         total_sub_total = Decimal(0.00)
+#         total_initial_total = Decimal(0.00)
+#         total_total = Decimal(0.00)
 
-        order = CartOrder.objects.create(
-            buyer=user,
-            full_name=full_name,
-            email = email,
-            mobile = mobile,
-            address = address,
-            city = city,
-            state = state,
-            country = country,
-        )
+#         order = CartOrder.objects.create(
+#             buyer=user,
+#             full_name=full_name,
+#             email = email,
+#             mobile = mobile,
+#             address = address,
+#             city = city,
+#             state = state,
+#             country = country,
+#         )
 
-        for c in cart_items:
-            CartOrderItem.objects.create(
-                order = order,
-                product = c.product,
-                vendor = c.product.vendor,
-                qty = c.qty,
-                color=c.color,
-                size = c.size,
-                price = c.price,
-                sub_total = c.sub_total,
-                shipping_amount=c.shipping_amount,
-                service_fee = c.service_fee,
-                tax_fee=c.tax_fee,
-                total=c.total,
-                initial_total=c.total
-            )
+#         for c in cart_items:
+#             CartOrderItem.objects.create(
+#                 order = order,
+#                 product = c.product,
+#                 vendor = c.product.vendor,
+#                 qty = c.qty,
+#                 color=c.color,
+#                 size = c.size,
+#                 price = c.price,
+#                 sub_total = c.sub_total,
+#                 shipping_amount=c.shipping_amount,
+#                 service_fee = c.service_fee,
+#                 tax_fee=c.tax_fee,
+#                 total=c.total,
+#                 initial_total=c.total
+#             )
 
-            total_shipping += Decimal(c.shipping_amount)
-            total_tax += Decimal(c.tax_fee)
-            total_service_fee += Decimal(c.service_fee)
-            total_sub_total += Decimal(c.sub_total)
-            total_initial_total += Decimal(c.total)
-            total_total += Decimal(c.total)
+#             total_shipping += Decimal(c.shipping_amount)
+#             total_tax += Decimal(c.tax_fee)
+#             total_service_fee += Decimal(c.service_fee)
+#             total_sub_total += Decimal(c.sub_total)
+#             total_initial_total += Decimal(c.total)
+#             total_total += Decimal(c.total)
 
-            order.vendor.add(c.product.vendor)
+#             order.vendor.add(c.product.vendor)
 
-        order.sub_total = total_sub_total
-        order.shipping_amount = total_shipping
-        order.tax_fee = total_tax
-        order.service_fee = total_service_fee
-        order.initial_total = total_initial_total
-        order.total = total_total
+#         order.sub_total = total_sub_total
+#         order.shipping_amount = total_shipping
+#         order.tax_fee = total_tax
+#         order.service_fee = total_service_fee
+#         order.initial_total = total_initial_total
+#         order.total = total_total
 
-        order.save()
+#         order.save()
 
-        return Response({"Message": "Order Created Successfully", "order_oid": order.oid}, status=status.HTTP_201_CREATED)
+#         return Response({"Message": "Order Created Successfully", "order_oid": order.oid}, status=status.HTTP_201_CREATED)
 
 
 class CheckOutView(generics.RetrieveAPIView):
@@ -523,4 +583,153 @@ class ReviewListAPIView(generics.ListCreateAPIView):
             review=review
             )
         return Response({"message": "Review created successfully"}, status=status.HTTP_200_OK)
+@api_view(['GET'])
+def search_by_text(request):
+    query = request.GET.get('query', '')
+    products = Product.objects.filter(title__icontains=query)
+    serializer = ProductSerializer(products, many=True)
+    return Response(serializer.data)
 
+@api_view(['POST'])
+def search_by_image(request):
+    if 'image' not in request.FILES:
+        return Response({'error': 'Missing image'}, status=400)
+
+    uploaded_image = request.FILES['image']
+    img_query = cv2.imdecode(np.frombuffer(uploaded_image.read(), np.uint8), cv2.IMREAD_GRAYSCALE)
+
+    orb = cv2.ORB_create()
+    kp1, des1 = orb.detectAndCompute(img_query, None)
+    bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+
+    similar_products = []
+
+    with ThreadPoolExecutor() as executor:
+        futures = []
+        for product in Product.objects.all():
+            futures.append(executor.submit(process_product, product, orb, bf, des1))
+        for future in futures:
+            result = future.result()
+            if result:
+                similar_products.append(result)
+
+    serializer = ProductSerializer(similar_products, many=True)
+    return Response(serializer.data)
+
+def process_product(product, orb, bf, des1):
+    img_db = cv2.imread(product.image.path, cv2.IMREAD_GRAYSCALE)
+    kp2, des2 = orb.detectAndCompute(img_db, None)
+    matches = bf.match(des1, des2)
+    matches = sorted(matches, key=lambda x: x.distance)
+    similarity_threshold = 50
+    good_matches = [match for match in matches if match.distance < similarity_threshold]
+    
+    if len(good_matches) > 10:
+        return product
+    return None
+
+class SearchProductAPIView(generics.ListCreateAPIView):
+    serializer_class = ProductSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        query = self.request.GET.get("query")
+        products = Product.objects.filter(title__icontains=query)
+        return products
+
+
+class UserAddressAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        profile = Profile.objects.get(user=request.user)
+        return Response(
+            {
+                "full_name": profile.full_name,
+                "mobile": profile.mobile,
+                "address": profile.address,
+                "city": profile.city,
+                "state": profile.state,
+                "country": profile.country,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    def post(self, request):
+        payload = request.data
+        profile = Profile.objects.get(user=request.user)
+
+        profile.full_name = payload.get("full_name", profile.full_name)
+        profile.mobile = payload.get("mobile", profile.mobile)
+        profile.address = payload.get("address", profile.address)
+        profile.city = payload.get("city", profile.city)
+        profile.state = payload.get("state", profile.state)
+        profile.country = payload.get("country", profile.country)
+        profile.save()
+
+        return Response({"message": "Adresse mise à jour avec succès"}, status=status.HTTP_200_OK)
+
+class CreateOrderAPIView(APIView):
+    """
+    API endpoint to handle individual product orders.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        data = request.data
+        print(data)
+        # Extract required fields
+        product_id = data.get("product_id")
+        qty = int(data.get("qty", 1))
+        size = data.get("size", "No Size")
+        color = data.get("color", "No Color")
+        price = float(data.get("price"))
+        full_name = data.get("full_name")
+        mobile = data.get("mobile")
+        address = data.get("address")
+        city = data.get("city")
+        state = data.get("state")
+        country = data.get("country")
+        user_id = data.get("user_id")
+
+        # Validate required fields
+        if not all([product_id, full_name, mobile, address, city]):
+            return Response(
+                {"message": "Veuillez entrer les informations demandées"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Fetch user and product
+        user = User.objects.filter(id=user_id).first() if user_id else None
+        product = get_object_or_404(Product, id=product_id)
+
+        # Calculate total price
+        total_price = price * qty
+
+        # Create the order
+        try:
+            order = CartOrder.objects.create(
+                buyer=user,
+                product=product,
+                vendor=product.vendor,
+                qty=qty,
+                size=size,
+                color=color,
+                price=total_price,
+                full_name=full_name,
+                mobile=mobile,
+                address=address,
+                city=city,
+                state=state,
+                country=country,
+            )
+            return Response(
+                {"message": "Order created successfully.", "order_id": order.oid},
+                status=status.HTTP_201_CREATED,
+            )
+        except Exception as e:
+            return Response(
+                {"message": "Failed to create order.", "error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        

@@ -31,9 +31,15 @@ SECRET_KEY = 'django-insecure-i7!sk!h%z5m87gs^mpb$*e3ons*ew1dk=5(1qcnp5=(%er43s)
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.1.67']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.137.1', '192.168.1.6', 'http://192.168.137.1:8000/', "http://192.168.1.6:5173/", "http://192.168.137.1:5173/"]
 
-
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",  # Exemple pour React
+    "http://127.0.0.1:5173",
+    "http://192.168.1.6:5173",
+    "http://192.168.137.1:5173",
+]
+ALLOWED_HOSTS = ['*']
 # Application definition
 
 INSTALLED_APPS = [
@@ -56,8 +62,10 @@ INSTALLED_APPS = [
     #third party apps
     'rest_framework',
     'rest_framework_simplejwt.token_blacklist',
+    
     'corsheaders',
     'anymail',
+    'rest_framework.authtoken',
     #'drf_yasg',
     
 ]
@@ -194,6 +202,9 @@ SIMPLE_JWT = {
     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken'),
     'TOKEN_TYPE_CLAIM': 'token_type',
     'TOKEN_USER_CLASS': 'rest_framework_simplejwt.models.TokenUser',
+    "TOKEN_OBTAIN_SERIALIZER": "rest_framework_simplejwt.serializers.TokenObtainPairSerializer",
+    "TOKEN_REFRESH_SERIALIZER": "rest_framework_simplejwt.serializers.TokenRefreshSerializer",
+  
 
     'JTI_CLAIM': 'jti',
 
@@ -242,3 +253,4 @@ JAZZMIN_UI_TWEAKS = {
     },
     "actions_sticky_top": False
 }
+

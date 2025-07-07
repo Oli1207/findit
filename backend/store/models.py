@@ -3,10 +3,12 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils.text import slugify
 from shortuuid.django_fields import ShortUUIDField
-from userauths.models import User
+from userauths.models import User, Profile
 from vendor.models import Vendor
 import cv2
 import numpy as np
+from django.urls import reverse
+from django.utils import timezone
 
 class Category(models.Model):
     title = models.CharField(max_length=100)
@@ -40,12 +42,13 @@ class Product(models.Model):
     featured = models.BooleanField(default=False)
     views = models.PositiveIntegerField(default=0)
     rating = models.PositiveIntegerField(default=0, null=True, blank=True)
-    vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE)
+    vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE, blank=True, null=True)
 
     pid = ShortUUIDField(unique=True, length=10, prefix="findit", alphabet="abcdefghijklmnopqrstuvwxyz")
-    slug = models.SlugField(unique=True)
+    slug = models.SlugField(null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
     orb_features = models.BinaryField(blank=True, null=True)  # Store ORB features
+    
 
     
     def save(self, *args, **kwargs):
@@ -53,20 +56,7 @@ class Product(models.Model):
         if not self.slug:
             self.slug = slugify(self.title)
 
-        # Extract ORB features if an image is present
-        if self.image:
-            image_path = self.image.path
-            image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-            
-            # Utilisation de SIFT pour extraire les caractéristiques
-            sift = cv2.SIFT_create()
-            keypoints, descriptors = sift.detectAndCompute(image, None)
-            
-            if descriptors is not None:
-                self.orb_features = np.array(descriptors).tobytes()
-            else:
-                self.orb_features = None  
-                
+       
         super(Product, self).save(*args, **kwargs)
 
 
@@ -96,10 +86,16 @@ class Product(models.Model):
 
     def color(self):
         return Color.objects.filter(product=self)
+    
+    def get_absolute_url(self):
+        return reverse("product_detail", kwargs={"slug": self.slug})
+    
+    def orders(self):
+        return  CartOrder.objects.filter(product=self).count()
 
 class Gallery(models.Model):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    image = models.FileField(upload_to="products", default="products.jpg")
+    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True)
+    image = models.FileField(upload_to="products", default="products.jpg",  null=True, blank=True)
     active = models.BooleanField(default=True)
     gid = ShortUUIDField(unique=True, alphabet="abcdefghijklmnopqrstuvwxyz", prefix="finditgallery")
 
@@ -110,25 +106,25 @@ class Gallery(models.Model):
         verbose_name_plural = "Galleries"
 
 class Specification(models.Model):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    title = models.CharField(max_length=1000)
-    content = models.CharField(max_length=1000)
+    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True)
+    title = models.CharField(max_length=1000,  null=True, blank=True)
+    content = models.CharField(max_length=1000,  null=True, blank=True)
 
     def __str__(self):
         return self.title
 
 class Size(models.Model):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    name = models.CharField(max_length=1000)
-    price = models.DecimalField(decimal_places=2, max_digits=12, default=0.00)
+    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True)
+    name = models.CharField(max_length=1000, null=True, blank=True)
+    price = models.DecimalField(decimal_places=2, max_digits=12, default=0.00,  null=True, blank=True)
 
     def __str__(self):
         return self.name
 
 class Color(models.Model):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    name = models.CharField(max_length=1000)
-    color_code = models.CharField(max_length=1000)
+    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True)
+    name = models.CharField(max_length=1000, null=True, blank=True)
+    color_code = models.CharField(max_length=1000,  null=True, blank=True)
 
     def __str__(self):
         return self.name
@@ -154,9 +150,8 @@ class Cart(models.Model):
 
 class CartOrder(models.Model):
     PAYMENT_STATUS = (
-        ("paye", "Paye"),
         ("en_attente", "En Attente"),
-        ("en_cours", "En Cours"),
+        ("complete", "Complete"),
         ("annule", "Annule"),
     )
     ORDER_STATUS = (
@@ -164,33 +159,32 @@ class CartOrder(models.Model):
         ("complete", "Complete"),
         ("annule", "Annule"),
     )
-    vendor = models.ManyToManyField(Vendor, blank=True)
+
     buyer = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
-    sub_total = models.DecimalField(default=0.00, max_digits=12, decimal_places=2)
-    shipping_amount = models.DecimalField(default=0.00, max_digits=12, decimal_places=2)
-    service_fee = models.DecimalField(default=0.00, max_digits=12, decimal_places=2)
-    tax_fee = models.DecimalField(default=0.00, max_digits=12, decimal_places=2)
-    total = models.DecimalField(default=0.00, max_digits=12, decimal_places=2)
-    payment_status = models.CharField(choices=PAYMENT_STATUS, max_length=100, default="en_attente")
-    order_status = models.CharField(choices=ORDER_STATUS, max_length=100, default="en_attente")
-    initial_total = models.DecimalField(default=0.00, max_digits=12, decimal_places=2)
-    saved = models.DecimalField(default=0.00, max_digits=12, decimal_places=2)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, null=True, blank=True)
+    vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE, null=True, blank=True)
+    qty = models.PositiveIntegerField(default=1)
+    size = models.CharField(max_length=100, null=True, blank=True)
+    color = models.CharField(max_length=100, null=True, blank=True)
+    price = models.DecimalField(default=0.00, max_digits=12, decimal_places=2)
+
+    # Adresse
     full_name = models.CharField(max_length=100, null=True, blank=True)
-    email = models.EmailField(max_length=100, null=True, blank=True)
     mobile = models.CharField(max_length=100, null=True, blank=True)
-    address = models.CharField(max_length=100, null=True, blank=True)
+    address = models.CharField(max_length=255, null=True, blank=True)
     city = models.CharField(max_length=100, null=True, blank=True)
     state = models.CharField(max_length=100, null=True, blank=True)
     country = models.CharField(max_length=100, null=True, blank=True)
-    stripe_session_id = models.CharField(max_length=1000, null=True, blank=True)
+
+    # Statut
+    payment_status = models.CharField(choices=PAYMENT_STATUS, max_length=100, default="en_attente")
+    order_status = models.CharField(choices=ORDER_STATUS, max_length=100, default="en_attente")
     oid = ShortUUIDField(unique=True, length=10, alphabet="abcdefghijklmnopqrstuvwxyz")
-    date  = models.DateTimeField(auto_now_add=True)
+    date = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.oid
+        return f"Commande {self.oid} "
     
-    def orderitem(self):
-        return CartOrderItem.objects.filter(order=self)
 
 class CartOrderItem(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
@@ -296,16 +290,29 @@ class Coupon(models.Model):
         return self.code
 
 class Presentation(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE, null=True, blank=True)
     title = models.CharField(max_length=100, null=True, blank=True)
     video = models.FileField(upload_to="video_de_presentation", default="video.mp4", blank=True, null=True)
     description = models.TextField()
     link = models.CharField(max_length=200, null=True, blank=True)
+    likes = models.ManyToManyField(User, related_name="presentation_likes", blank=True)
 
     def __str__(self):
         return self.title
 
+class Comment(models.Model):
+    presentation = models.ForeignKey(Presentation, on_delete=models.CASCADE, related_name="comments")
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    content = models.TextField()
+    created_at = models.DateTimeField(default=timezone.now)
+    parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name="replies")
 
+    def __str__(self):
+        if self.user and hasattr(self.user, 'vendor') and self.user.vendor == self.presentation.vendor:
+            return f"{self.user.vendor.name} - {self.content[:20]}"
+        return f"{self.user.full_name} - {self.content[:20]}"
+    
+    
 class Tax(models.Model):
     country = models.CharField(max_length=100)
     rate = models.IntegerField(default=5, help_text="Numbers added here are in percentage e.g 5%")

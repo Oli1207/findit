@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import apiInstance from "../../utils/axios";
 import UserData from '../plugin/UserData';
+import { Link } from 'react-router-dom';
 
 
 
@@ -40,13 +41,15 @@ function Sidebar() {
       </li>
       <li className="list-group-item d-flex justify-content-between align-items-start">
         <div className="ms-2 me-auto">
-          <div className="fw-bold">Orders</div>
+        
+          <div className="fw-bold"><Link to={'/customer/orders/'}>Orders</Link></div>
         </div>
         <span className="badge bg-primary rounded-pill">14</span>
       </li>
       <li className="list-group-item d-flex justify-content-between align-items-start">
         <div className="ms-2 me-auto">
-          <div className="fw-bold">Wishlist</div>
+         
+          <div className="fw-bold"><Link to={'/customer/wishlist/'}>Wishlist</Link></div>
         </div>
       </li>
       <li className="list-group-item d-flex justify-content-between align-items-start">

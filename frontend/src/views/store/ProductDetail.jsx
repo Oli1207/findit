@@ -5,6 +5,9 @@ import GetCurrentAddress from '../plugin/UserCountry';
 import UserData from '../plugin/UserData';
 import CardID from '../plugin/CardID';
 import Swal from 'sweetalert2'
+import moment from 'moment'
+import Review from './Review';
+import './product.css'
 
 const Toast = Swal.mixin({
   toast: true,
@@ -24,7 +27,7 @@ function ProductDetail() {
     const currentAddress = GetCurrentAddress();
     const userData = UserData()
     const cart_id = CardID()
-    const [reviews, setReviews] = useState([])
+
 
     console.log(cart_id)
 
@@ -44,6 +47,7 @@ function ProductDetail() {
                 setGallery(res.data.gallery);
                 setColor(res.data.color);
                 setSize(res.data.size);
+                console.log(res.data)
             });
     }, []);
 
@@ -93,19 +97,8 @@ function ProductDetail() {
           })
     }
 
-    
 
-    useEffect(() => {
-        const fetchReviewData = async() => {
-            if (product){
-            await apiInstance.get(`reviews/${product?.id}/`).then((res) =>{
-                console.log(res.data)
-                setReviews(res.data)
-            })
-        }
-    }
-        fetchReviewData()
-    }, [product])
+
 
     return (
         <main className="mb-4 mt-4">
@@ -366,72 +359,7 @@ function ProductDetail() {
                         aria-labelledby="pills-contact-tab"
                         tabIndex={0}
                     >
-                        <div className="container mt-5">
-                            <div className="row">
-                                {/* Column 1: Form to create a new review */}
-                                <div className="col-md-6">
-                                    <h2>Create a New Review</h2>
-                                    <form>
-                                        <div className="mb-3">
-                                            <label htmlFor="username" className="form-label">
-                                                Rating
-                                            </label>
-                                            <select name="" className='form-select' id="">
-                                                <option value="1">1 Star</option>
-                                                <option value="1">2 Star</option>
-                                                <option value="1">3 Star</option>
-                                                <option value="1">4 Star</option>
-                                                <option value="1">5 Star</option>
-                                            </select>
-                                        </div>
-                                        <div className="mb-3">
-                                            <label htmlFor="reviewText" className="form-label">
-                                                Review
-                                            </label>
-                                            <textarea
-                                                className="form-control"
-                                                id="reviewText"
-                                                rows={4}
-                                                placeholder="Write your review"
-                                                defaultValue={""}
-                                            />
-                                        </div>
-                                        <button type="submit" className="btn btn-primary">
-                                            Submit Review
-                                        </button>
-                                    </form>
-                                </div>
-                                {/* Column 2: Display existing reviews */}
-                                <div className="col-md-6">
-                                    <h2>Existing Reviews</h2>
-                                    {reviews?.map((r, index) => (
-                                         <div className="card mb-3">
-                                         <div className="row g-0">
-                                             <div className="col-md-3">
-                                                 <img
-                                                     src="https://www.gravatar.com/avatar/2c7d99fe281ecd3bcd65ab915bac6dd5?s=250"
-                                                     alt="User Image"
-                                                     className="img-fluid"
-                                                 />
-                                             </div>
-                                             <div className="col-md-9">
-                                                 <div className="card-body">
-                                                     <h5 className="card-title">IIan</h5>
-                                                     <p className="card-text">May 10, 2024</p>
-                                                     <p className="card-text">
-                                                         This is a great product! I'm really satisfied with it.
-                                                     </p>
-                                                 </div>
-                                             </div>
-                                         </div>
-                                     </div>
-                                    ))}
-                                   
-                                    
-                                    {/* More reviews can be added here */}
-                                </div>
-                            </div>
-                        </div>
+                       <Review product={product} userData={userData} />
                     </div>
                     <div
                         className="tab-pane fade"

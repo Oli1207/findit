@@ -1,0 +1,91 @@
+/* === Global Styles === */
+body {
+  background-color: #f0f2f5;; /* Fond blanc cassé */
+  font-family: 'Poppins', sans-serif; /* Police principale */
+  color: #000000; /* Couleur principale du texte */
+}
+
+/* === Container === */
+.manage {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+  width: 100%;
+
+  /* Pour petits écrans */
+  @media (max-width: 768px) {
+    max-width: 100%;
+    padding: 0;
+  }
+}
+
+.container {
+  padding-top: 70*px;
+  margin-top: 180px;
+}
+
+/* === Buttons === */
+.category-button {
+  background-color: #DF468F; /* Rose vif pour boutons */
+  color: #FFF6EA; /* Texte blanc cassé */
+  border: 2px solid #FFF6EA; /* Bordure blanche */
+  margin-bottom: 15px;
+  padding: 10px 20px;
+  font-size: 16px;
+  border-radius: 20px; /* Bords plus arrondis */
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+.category-button:hover {
+  background-color: #C3EBFF; /* Changement au bleu clair */
+  transform: scale(1.05);
+}
+
+/* === Cards === */
+.card-col {
+  background-color: #f0f2f5;; /* Fond blanc cassé pour cohérence */
+  color: #000000;
+  border: 1px solid #DF468F; /* Accent rose vif */
+  border-radius: 15px; /* Coins arrondis */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Ombre légère */
+  transition: transform 0.3s ease;
+  
+}
+.card{
+  background-color: #f0f2f5;;
+}
+.card-col:hover {
+  transform: translateY(-5px); /* Légère élévation */
+}
+
+/* === Specific Buttons === */
+.btn-col {
+  background-color: #000000; /* Bouton noir */
+  color: #FFF6EA; /* Texte blanc cassé */
+  border: none;
+  border-radius: 20px;
+  padding: 10px 15px;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.btn-col:hover {
+  background-color: #DF468F; /* Rose vif au survol */
+}
+
+.btn-spec {
+  background-color: #C3EBFF; /* Bleu clair */
+  color: #000000; /* Texte noir */
+  border-radius: 20px;
+  padding: 10px 15px;
+}
+
+/* === Typography === */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Genty', cursive; /* Police pour titres */
+  color: #DF468F;
+}
+.btncoul{
+  background-color: #DF468F;
+}

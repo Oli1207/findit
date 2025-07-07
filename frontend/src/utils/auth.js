@@ -115,6 +115,7 @@ export const getRefreshToken = async () => {
     const refresh_token = Cookies.get("refresh_token");
 
     if (!refresh_token) {
+        logout();
         console.error("Missing refresh token");
         throw new Error("Missing refresh token");
     }
@@ -125,6 +126,7 @@ export const getRefreshToken = async () => {
         });
         return response.data; // Expected to return { access: 'new_access_token' }
     } catch (error) {
+        logout();
         console.error("Error refreshing token:", error);
         throw error; // Propagate the error to be handled by the caller
     }
