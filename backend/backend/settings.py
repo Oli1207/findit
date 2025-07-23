@@ -31,7 +31,7 @@ SECRET_KEY = 'django-insecure-i7!sk!h%z5m87gs^mpb$*e3ons*ew1dk=5(1qcnp5=(%er43s)
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost','192.168.137.1', 'http://192.168.1.13:5173/', 'http://localhost:5173', '127.0.0.1', '192.168.137.3','192.168.1.13', '192.168.1.3', 'http://192.168.1.13:8000/', "http://192.168.1.3:5173/", "http://192.168.1.13:5173/"]
+ALLOWED_HOSTS = ['localhost','192.168.137.1',"www.backend.findit.deals", "backend.findit.deals", 'http://192.168.1.13:5173/', 'http://localhost:5173', '127.0.0.1', '192.168.137.3','192.168.1.13', '192.168.1.3', 'http://192.168.1.13:8000/', "http://192.168.1.3:5173/", "http://192.168.1.13:5173/"]
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # Exemple pour React
@@ -40,7 +40,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://192.168.1.3:5173",
     "http://192.168.1.13:5173",
     "http://192.168.1.13",
-    
+    "https://backend.findit.deals/",
+    "www.backend.findit.deals",
 
 ]
 
@@ -69,7 +70,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     
     'corsheaders',
-    'anymail',
+    
     'rest_framework.authtoken',
     #'drf_yasg',
 
@@ -219,8 +220,8 @@ AUTH_USER_MODEL = 'userauths.User'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-STRIPE_PUBLIC_KEY = env('STRIPE_PUBLIC_KEY')
-STRIPE_SECRET_KEY = env('STRIPE_SECRET_KEY')
+# STRIPE_PUBLIC_KEY = env('STRIPE_PUBLIC_KEY')
+# STRIPE_SECRET_KEY = env('STRIPE_SECRET_KEY')
 
 # MAILGUN_API_KEY = env('MAILGUN_API_KEY')
 # MAILGUN_SENDER_DOMAIN = env('MAILGUN_SENDER_DOMAIN')

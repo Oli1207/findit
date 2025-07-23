@@ -18,7 +18,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 import cv2
 import numpy as np
-import stripe
+# import stripe
 from rest_framework.parsers import MultiPartParser, FormParser
 from concurrent.futures import ThreadPoolExecutor
 
@@ -52,7 +52,7 @@ def send_push_notification(user, title, body, url="/"):
         print("Web push failed: {}", repr(ex))
 
 
-stripe.api_key = settings.STRIPE_SECRET_KEY
+# stripe.api_key = settings.STRIPE_SECRET_KEY
 
 # @receiver(post_save, sender=CartOrder)
 # def send_notification(user=None, vendor=None, order=None):
