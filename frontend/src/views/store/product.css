@@ -61,7 +61,7 @@ body {
 
 /* === Specific Buttons === */
 .btn-col {
-  background-color: #000000; /* Bouton noir */
+  /* background-color: #000000;  */
   color: #FFF6EA; /* Texte blanc cassé */
   border: none;
   border-radius: 20px;

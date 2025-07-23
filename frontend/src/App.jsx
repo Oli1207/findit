@@ -34,9 +34,17 @@ import TikTokFeed from './views/store/TiktokFeed'
 import ProductDetailFeed from './views/store/ProductDetailFeed'
 import OrdersVendorTiktok from './views/vendor/OrdersVendorTiktok'
 import FollowedVendorsFeed from './views/store/FollowedVendorsFeed'
+import CreateNewPassword from './views/auth/CreateNewPassword'
+import { ReloadPrompt } from './Prompt'
+import InstallButton from './InstallButton'
+import PWAInstallPrompt from './views/store/PWAInstallPrompt'
 
 function App() {
   return (
+    <>
+      <ReloadPrompt/>
+    <InstallButton />
+     <PWAInstallPrompt />
     <BrowserRouter>
       <Routes>
     
@@ -56,6 +64,7 @@ function App() {
         <Route path="/logout" element={<MainWrapper><Logout /></MainWrapper>} />
         {/* <Route path="/dashboard" element={<MainWrapper><Dashboard /></MainWrapper>} /> */}
         <Route path="/forgot-password" element={<MainWrapper><ForgotPassword /></MainWrapper>} />
+          <Route path="/create-new-password" element={<MainWrapper><CreateNewPassword /></MainWrapper>} />
         <Route path="/haul" element={<MainWrapper><Explore /></MainWrapper>} />
         <Route path="/detail/:slug/" element={<MainWrapper><ProductDetailFeed /></MainWrapper>} />
         <Route path="/cart/" element={<MainWrapper><Cart /></MainWrapper>} />
@@ -91,6 +100,7 @@ function App() {
 
       </Routes>
     </BrowserRouter>
+     </>
   )
 }
 

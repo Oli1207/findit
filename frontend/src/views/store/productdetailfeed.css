@@ -1,0 +1,191 @@
+/* productdetailfeed.css */
+
+.instagram-feed {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #111;
+  background: #fff;
+  max-width: 600px;
+  margin: 0 auto;
+  position: relative;
+}
+
+/* Entête */
+.ig-header {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  border-bottom: 1px solid #ddd;
+}
+.back-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  margin-right: clamp(10px, 4vw, 14px);
+}
+.ig-header h2 {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* Galerie slider */
+.ig-gallery {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  aspect-ratio: 1/1;
+}
+.ig-slide-container {
+  display: flex;
+  transition: transform 0.3s ease;
+}
+.ig-slide-image {
+  width: 100%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.ig-dots {
+  position: absolute;
+  bottom: 8px;
+  width: 100%;
+  text-align: center;
+}
+.ig-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: rgba(255,255,255,0.7);
+  margin: 0 4px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.ig-dot.active {
+  background: #DF468F;
+}
+
+/* Info & interactions */
+.ig-info {
+  padding: 12px;
+}
+.ig-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.ig-meta h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+.ig-meta .price {
+  color: #DF468F;
+  font-weight: 600;
+}
+
+.ig-actions {
+  display: flex;
+  gap: 16px;
+  padding: 8px 0;
+}
+.ig-actions button {
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+}
+
+/* Sélecteurs stylés */
+.ig-select {
+  margin: 8px 0;
+}
+.ig-select label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.9rem;
+}
+.ig-select select {
+  width: 100%;
+  padding: 8px;
+  font-size: 1rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+/* Quantité */
+.ig-qty {
+  margin: 8px 0;
+}
+.ig-qty input {
+  width: 100%;
+  padding: 8px;
+  font-size: 1rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+/* Bouton achat */
+.ig-buy-btn {
+  width: 100%;
+  background: #DF468F;
+  color: #fff;
+  padding: 12px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 4px;
+  margin: 12px 0;
+}
+
+/* Description */
+.description {
+  font-size: 0.95rem;
+  color: #333;
+  line-height: 1.4;
+}
+
+/* Overlay reviews */
+.ig-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.ig-review-panel {
+  background: #fff;
+  width: 90%;
+  max-height: 90%;
+  border-radius: 8px;
+  padding: 16px;
+  overflow-y: auto;
+  position: relative;
+}
+.ig-review-panel .close {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  font-weight: bold;
+}
+
+/* Loader centered */
+.loader {
+  height: 80vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 1.1rem;
+  color: #666;
+}
+.action-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 22px;
+    cursor: pointer;
+  }
+  
+  .action-btn span {
+    margin-top: 5px;
+    font-size: 14px;
+  }

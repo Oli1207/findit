@@ -25,7 +25,7 @@ class CartOrderAdmin(admin.ModelAdmin):
     
 
 admin.site.register(Product, ProductAdmin)
-
+admin.site.register(CategoryInterest)
 admin.site.register(Cart)
 admin.site.register(CartOrder)
 admin.site.register(CartOrderItem)

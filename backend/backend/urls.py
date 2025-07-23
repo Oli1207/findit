@@ -40,7 +40,7 @@ from django.conf.urls.static import static
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/', include('userauths.urls')),
-
+    path('accounts/', include('allauth.urls')),
     #Documentation
     #path("", schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
 ]

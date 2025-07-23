@@ -5,50 +5,61 @@ import Review from "./Review";
 import Swal from "sweetalert2";
 import UserData from "../plugin/UserData";
 import GetCurrentAddress from "../plugin/UserCountry";
-import "./tiktokfeed.css";
+import "./productdetailfeed.css";
+import { useSwipeable } from 'react-swipeable';
+import ReloadPrompt from "../../Prompt";
+
 
 const ProductDetailFeed = () => {
   const { slug } = useParams();
   const [product, setProduct] = useState(null);
   const [gallery, setGallery] = useState([]);
-  const [selectedImage, setSelectedImage] = useState("");
+  
+    const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const [showReviews, setShowReviews] = useState(false);
   const [profileData, setProfileData] = useState(null);
-  const [colorValue, setColorValue] = useState("No Color");
-  const [sizeValue, setSizeValue] = useState("No Size");
+   const [colorValue, setColorValue] = useState("No Color");
+   const [sizeValue, setSizeValue] = useState("No Size");
   const [qtyValue, setQtyValue] = useState(1);
-  const [specificationStates, setSpecificationStates] = useState({});
   const navigate = useNavigate();
   const axios = apiInstance;
   const userData = UserData();
   const currentAddress = GetCurrentAddress();
+   const [useProfileAddress, setUseProfileAddress] = useState(true);
+    
+    const [customAddress, setCustomAddress] = useState({
+      mobile: "",
+      address: "",
+      city: "",
+      state: "",
+      // country: currentAddress.country,
+    });
+  
+    const [orderProduct, setOrderProduct] = useState(null);
 
   useEffect(() => {
     const fetchProduct = async () => {
       try {
         const res = await axios.get(`products/${slug}/`);
         setProduct(res.data);
-        setGallery(res.data.gallery);
-        setSelectedImage(res.data.image);
+        setGallery([res.data.image, ...res.data.gallery.map(g => g.image)]);
       } catch (error) {
-        console.error("Erreur chargement produit :", error);
         Swal.fire("Erreur", "Produit introuvable", "error");
         navigate("/");
       }
     };
-
     const fetchProfile = async () => {
       try {
         const res = await axios.get(`user/profile/${userData?.user_id}/`);
         setProfileData(res.data);
-      } catch (err) {
-        console.error("Erreur chargement profil :", err);
-      }
+      } catch (err) {}
     };
-
     fetchProduct();
     fetchProfile();
-  }, [slug, navigate, userData?.user_id]);
+  }, [slug, userData?.user_id, navigate]);
+
+  const selectedImage = gallery[selectedIndex];
 
   const handleCopyLink = () => {
     const url = `${window.location.origin}/detail/${product.slug}`;
@@ -64,41 +75,58 @@ const ProductDetailFeed = () => {
     });
   };
 
-  const toggleSpecification = (productId) => {
-    setSpecificationStates((prev) => ({
-      ...prev,
-      [productId]: !prev[productId],
-    }));
-  };
-
-  const handlePlaceOrder = async () => {
+  const handlePlaceOrder = async (product_id, price, vendor_id) => {
     const formData = new FormData();
-    formData.append("product_id", product.id);
+    formData.append("product_id", product_id);
     formData.append("user_id", userData?.user_id);
     formData.append("qty", qtyValue);
-    formData.append("price", product.price);
-    formData.append("vendor", product.vendor?.id);
+    formData.append("price", price);
+    formData.append("vendor", vendor_id);
     formData.append("size", sizeValue);
     formData.append("color", colorValue);
     formData.append("full_name", userData?.full_name);
-    formData.append("mobile", profileData?.phone);
-    formData.append("address", profileData?.address);
-    formData.append("city", profileData?.city);
-    formData.append("state", profileData?.state);
-    formData.append("country", currentAddress.country);
+
+    if (
+      useProfileAddress &&
+      profileData?.mobile &&
+      profileData?.address &&
+      profileData?.city
+    ) {
+      // On utilise le profil existant
+      formData.append("mobile", profileData.mobile);
+      formData.append("address", profileData.address);
+      formData.append("city", profileData.city);
+      formData.append("state", profileData.state);
+      formData.append("country", profileData.country);
+    } else {
+      // Sinon on prend les valeurs du formulaire
+      formData.append("mobile", customAddress.mobile);
+      formData.append("address", customAddress.address);
+      formData.append("city", customAddress.city);
+
+      // On met à jour le profil en même temps
+      const profileForm = new FormData();
+      profileForm.append("mobile", customAddress.mobile);
+      profileForm.append("address", customAddress.address);
+      profileForm.append("city", customAddress.city);
+
+      await axios.patch(`user/profile/${userData?.user_id}/`, profileForm);
+    }
 
     try {
+      console.log(formData.values);
       const response = await axios.post(`create-order/`, formData);
       Swal.fire({
         icon: "success",
-        title: "Commande passée avec succès",
+        title: "Commande passée avec succès !",
         text: response.data.message,
       });
+      setOrderProduct(null);
     } catch (error) {
       Swal.fire({
         icon: "error",
-        title: "Erreur commande",
-        text: error.response?.data?.message || "Problème inattendu",
+        title: "Échec commande",
+        text: error.response?.data?.message || "Erreur réseau",
       });
     }
   };
@@ -118,147 +146,304 @@ const ProductDetailFeed = () => {
     });
   };
 
-  if (!product) return <div className="text-center mt-5">Chargement...</div>;
+  // 👇 NE PAS le mettre après `if (!product)`
+const swipeHandlers = useSwipeable({
+  onSwipedLeft: () => setSelectedIndex((prev) => Math.min(prev + 1, gallery.length - 1)),
+  onSwipedRight: () => setSelectedIndex((prev) => Math.max(prev - 1, 0)),
+  trackMouse: true
+});
+
+if (!product) return <div className="loader">Chargement…</div>;
+
+
+   const handleReviewIconClick = (product) => {
+    setSelectedProduct(product);
+  };
+
+  const handleCloseReview = () => {
+    setSelectedProduct(null);
+  };
+  
+    const handleQtyChange = (event) => {
+    setQtyValue(event.target.value);
+  };
+
+// ⬆️ Juste avant le return, dans le composant
 
   return (
-    <div className="app-container">
-      {/* Produit */}
-      <div className="feed-item">
-        <img src={selectedImage} alt={product.title} className="feed-image" />
-        <div className="overlay"></div>
+    <div className="instagram-feed">
+      {/* Header */}
+      <div className="ig-header">
+        <button onClick={() => navigate(-1)} className="back-btn">←</button>
+        <h2>{product.vendor?.name || "Vendor"}</h2>
+      </div>
 
-        {/* Infos produit */}
-        <div className="info">
-          <h2>{product.title}</h2>
-          <h4>{product.price} FCFA</h4>
-          <p>{product.description}</p>
+      {/* Galerie principale */}
+  <div className="ig-gallery">
+  <div
+    {...swipeHandlers}
+    className="ig-slide-container"
+    style={{ transform: `translateX(-${selectedIndex * 100}%)` }}
+  >
+    {gallery.map((img, i) => (
+      <img key={i} src={img} className="ig-slide-image" alt={product.title} />
+    ))}
+  </div>
+  <div className="ig-dots">
+    {gallery.map((_, i) => (
+      <span
+        key={i}
+        className={`ig-dot ${selectedIndex === i ? "active" : ""}`}
+        onClick={() => setSelectedIndex(i)}
+      />
+    ))}
+  </div>
+</div>
 
-          {/* Mini galerie */}
-          <div className="d-flex flex-wrap mt-2">
-            {[product.image, ...gallery.map((g) => g.image)].map((img, index) => (
-              <div className="p-1" style={{ cursor: "pointer" }} key={index}>
-                <img
-                  src={img}
-                  onClick={() => setSelectedImage(img)}
-                  style={{
-                    width: 70,
-                    height: 70,
-                    objectFit: "cover",
-                    borderRadius: 5,
-                    border: selectedImage === img ? "2px solid #DF468F" : "1px solid #ddd"
-                  }}
-                  alt={`img-${index}`}
-                />
+
+
+      {/* Infos produit */}
+      <div className="ig-info">
+        <div className="ig-meta">
+          <h3>{product.title}</h3>
+          <p className="price">{product.price} FCFA</p>
+          
+        </div>
+
+        <p className="description">{product.description}</p>
+         <div className="ig-actions">
+              <div className="action-btn">
+                <i className="fas fa-star" />{" "}
+                <span>
+                  {product.rating ? product.rating.toFixed(1) : "0.0"}
+                </span>
               </div>
-            ))}
-          </div>
-
-          {/* Couleurs */}
-          {product.color?.length > 0 && (
-            <>
-              <h6 className="mt-2">Couleur : {colorValue}</h6>
-              <div className="d-flex flex-wrap">
-                {product.color.map((color, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setColorValue(color.name)}
-                    className="btn p-2 m-1"
-                    style={{
-                      backgroundColor: color.color_code,
-                      border:
-                        colorValue === color.name ? "2px solid #DF468F" : "1px solid #ddd"
-                    }}
-                  ></button>
-                ))}
+              <div
+                className="action-btn"
+                onClick={() => handleReviewIconClick(product)}
+              >
+                <i className="fas fa-comment-dots"></i>{" "}
+                <span>{product.rating_count || 0}</span>
               </div>
-            </>
-          )}
-
-          {/* Tailles */}
-          {product.size?.length > 0 && (
-            <>
-              <h6 className="mt-2">Taille : {sizeValue}</h6>
-              <div className="d-flex flex-wrap">
-                {product.size.map((size, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setSizeValue(size.name)}
-                    className={`btn btn-sm m-1 ${
-                      sizeValue === size.name ? "btn-primary" : "btn-outline-secondary"
-                    }`}
-                  >
-                    {size.name}
-                  </button>
-                ))}
+              {/* <div
+                className="action-btn"
+                onClick={() => handleOrderClick(product)}
+              >
+                <i className="fas fa-shopping-cart"></i>
+              </div> */}
+              <div
+                className="action-btn"
+                onClick={() => handleCopyLink(product)}
+              >
+                <i className="fas fa-link"></i>
               </div>
-            </>
-          )}
-
-          {/* Quantité */}
-          <div className="mt-2">
-            <label>Quantité :</label>
-            <input
-              type="number"
-              min={1}
-              value={qtyValue}
-              onChange={(e) => setQtyValue(e.target.value)}
-              className="form-control w-50"
-            />
-          </div>
-
-          {/* Spécifications */}
-          {product.specification?.length > 0 && (
-            <>
-              <h5 className="mt-3">Détails :</h5>
-              {product.specification.map((spec, idx) => (
-                <div key={idx}>
-                  <strong>{spec.title}:</strong> {spec.content}
-                </div>
+            </div>
+{/* 
+        {product.color?.length > 0 && (
+          <div className="ig-select">
+            <label>Couleur</label>
+            <select onChange={e => setColorValue(e.target.value)}>
+              <option>Couleur</option>
+              {product.color.map(c => (
+                <option key={c.name} value={c.name}>{c.name}</option>
               ))}
-            </>
-          )}
+            </select>
+          </div>
+        )}
+
+        {product.size?.length > 0 && (
+          <div className="ig-select">
+            <label>Taille</label>
+            <select onChange={e => setSizeValue(e.target.value)}>
+              <option>Taille</option>
+              {product.size.map(s => (
+                <option key={s.name} value={s.name}>{s.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        <div className="ig-qty">
+          <input
+            type="number"
+            min={1}
+            value={qtyValue}
+            onChange={e => setQtyValue(e.target.value)}
+          />
         </div>
 
-        {/* Actions */}
-        <div className="actions">
-          <div className="action-btn">
-            ❤️ {product.product_rating ? product.product_rating.toFixed(1) : "0.0"}
-          </div>
-          <div className="action-btn" onClick={() => setShowReviews(true)}>
-            💬
-          </div>
-          <div className="action-btn" onClick={handleCopyLink}>
-            🔗
-          </div>
-        </div>
-      </div>
-
-      {/* Bouton Acheter */}
-      <div className="bottom-bar d-flex">
-        <button
-          className="btn w-50"
-          style={{ backgroundColor: "#DF468F", color: "white" }}
-          onClick={handlePlaceOrder}
-        >
+        <button className="ig-buy-btn" onClick={handlePlaceOrder}>
           Commander
-        </button>
-        <button className="btn btn-outline-light w-50" onClick={addToWishList}>
-          ❤️ Wishlist
-        </button>
-      </div>
+        </button> */}
 
-      {/* Reviews */}
-      {showReviews && (
-        <div className="review-overlay">
-          <div className="review-panel">
-            <button className="btn-close" onClick={() => setShowReviews(false)}>
-              &times;
+             <>
+          
+            <div className="mb-3">
+              <label>
+                <b>Quantité :</b>
+              </label>
+              <input
+                type="number"
+                className="form-control"
+                value={qtyValue}
+                min="1"
+                onChange={handleQtyChange}
+              />
+            </div>
+            {orderProduct?.size?.length > 0 && (
+              <div className="mb-3">
+                <label>
+                  <b>Taille :</b>
+                </label>
+                <div className="d-flex flex-wrap gap-2">
+                  {orderProduct?.size?.map((size, index) => (
+                    <button
+                      key={index}
+                      onClick={() =>
+                        handleSizeButtonClick(orderProduct.id, size.name)
+                      }
+                      className="btn btn-outline-primary btn-sm"
+                    >
+                      {size.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {orderProduct?.color?.length > 0 && (
+              <div className="mb-3">
+                <label>
+                  <b>Couleur :</b>
+                </label>
+                <div className="d-flex flex-wrap gap-2">
+                  {orderProduct?.color?.map((color, index) => (
+                    <button
+                      key={index}
+                      className="btn btn-sm p-3"
+                      style={{ backgroundColor: `${color.color_code}` }}
+                      onClick={() =>
+                        handleColorButtonClick(orderProduct.id, color.name)
+                      }
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* Utiliser mon adresse */}
+            {profileData?.mobile &&
+            profileData?.address &&
+            profileData?.city ? (
+              <div className="form-check my-3">
+                <input
+                  className="form-check-input"
+                  type="checkbox"
+                  id="useProfileAddress"
+                  checked={useProfileAddress}
+                  onChange={(e) => setUseProfileAddress(e.target.checked)}
+                />
+                <label className="form-check-label" htmlFor="useProfileAddress">
+                  Utiliser mon adresse enregistrée
+                </label>
+              </div>
+            ) : null}
+            {/* /* Si décoché ou adresse inexistante → champs personnalisés  */}
+            {(!useProfileAddress ||
+              !profileData?.mobile ||
+              !profileData?.address ||
+              !profileData?.city) && (
+              <div>
+                <div className="mb-2">
+                  <label>Téléphone</label>
+                  <input
+                    className="form-control"
+                    value={customAddress.mobile}
+                    onChange={(e) =>
+                      setCustomAddress({
+                        ...customAddress,
+                        mobile: e.target.value,
+                      })
+                    }
+                    type="text"
+                  />
+                </div>
+                <div className="mb-2">
+                  <label>Adresse</label>
+                  <input
+                    className="form-control"
+                    value={customAddress.address}
+                    onChange={(e) =>
+                      setCustomAddress({
+                        ...customAddress,
+                        address: e.target.value,
+                      })
+                    }
+                    type="text"
+                  />
+                </div>
+                <div className="mb-2">
+                  <label>Ville</label>
+                  <input
+                    className="form-control"
+                    value={customAddress.city}
+                    onChange={(e) =>
+                      setCustomAddress({
+                        ...customAddress,
+                        city: e.target.value,
+                      })
+                    }
+                    type="text"
+                  />
+                </div>
+              </div>
+            )}
+            {/* Boutons actions */}
+            <button
+              className="btn btn-primary w-100 my-2"
+              onClick={() =>
+                handlePlaceOrder(
+                  product?.id,
+                  product?.price,
+                  product?.vendor?.id
+                )
+              }
+            >
+              <i className="fas fa-shopping-cart me-2" />
+              Commander
             </button>
-            <h5 className="mb-3">Avis sur {product.title}</h5>
+            <button
+              className="btn btn-outline-danger w-100"
+              onClick={() => addToWishList(product?.id)}
+            >
+              <i className="fas fa-heart me-2" />
+              Ajouter en wishlist
+            </button>
+       </>
+      
+      </div>
+<ReloadPrompt/>
+      {/* Panel d’avis */}
+      {/* {showReviews && (
+        <div className="ig-overlay">
+          <div className="ig-review-panel">
+            <button className="close" onClick={() => setShowReviews(false)}>
+              ×
+            </button>
+            <h5>Avis sur {product.title}</h5>
             <Review product={product} userData={userData} />
           </div>
         </div>
-      )}
+      )} */}
+
+         {/* {selectedProduct && (
+        <div className="review-overlay">
+          <div className="review-panel">
+            <button className="btn-close" onClick={handleCloseReview}>
+              &times;
+            </button>
+            <Review product={selectedProduct} userData={userData} />
+          </div>
+        </div>
+      )} */}
     </div>
   );
 };

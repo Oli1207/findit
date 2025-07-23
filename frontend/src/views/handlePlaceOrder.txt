@@ -1,0 +1,64 @@
+ const handlePlaceOrder = async (product_id, price, vendor_id) => {
+    const formData = new FormData();
+    formData.append("product_id", product_id);
+    formData.append("user_id", userData?.user_id);
+    formData.append("qty", qtyValue);
+    formData.append("price", price);
+    formData.append("vendor", vendor_id);
+    formData.append("size", sizeValue);
+    formData.append("color", colorValue);
+    formData.append("full_name", userData?.full_name);
+
+    if (
+      useProfileAddress &&
+      profileData?.mobile &&
+      profileData?.address &&
+      profileData?.city
+    ) {
+      // On utilise le profil existant
+      formData.append("mobile", profileData.mobile);
+      formData.append("address", profileData.address);
+      formData.append("city", profileData.city);
+      formData.append("state", profileData.state);
+      formData.append("country", profileData.country);
+    } else {
+      // Sinon on prend les valeurs du formulaire
+      formData.append("mobile", customAddress.mobile);
+      formData.append("address", customAddress.address);
+      formData.append("city", customAddress.city);
+
+      // On met à jour le profil en même temps
+      const profileForm = new FormData();
+      profileForm.append("mobile", customAddress.mobile);
+      profileForm.append("address", customAddress.address);
+      profileForm.append("city", customAddress.city);
+
+
+      await axios.patch(`user/profile/${userData?.user_id}/`, profileForm);
+
+      if (!navigator.onLine) {
+    saveOrderOffline(orderData);
+    alert("Commande enregistrée hors-ligne. Elle sera envoyée dès que vous serez en ligne.");
+    return;
+  }
+    }
+
+    try {
+      console.log(formData.values);
+      const response = await axios.post(`create-order/`, formData);
+      Swal.fire({
+        icon: "success",
+        title: "Commande passée avec succès !",
+        text: response.data.message,
+      });
+      setOrderProduct(null);
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Échec commande",
+        text: error.response?.data?.message || "Erreur réseau",
+      });
+      alert("Échec de l'envoi. Enregistrement hors-ligne...");
+    saveOrderOffline(orderData);
+    }
+  };

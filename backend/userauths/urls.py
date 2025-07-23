@@ -4,15 +4,22 @@ from userauths import views as userauths_views
 from store import views as store_views
 from customer import views as customer_views
 from vendor import views as vendor_views
-
+from dj_rest_auth.registration.views import SocialLoginView
+from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
 from rest_framework_simplejwt.views import TokenRefreshView
+
+
 urlpatterns = [
     path('user/token/', userauths_views.MyTokenObtainPairView.as_view()),
     path('user/token/refresh/', TokenRefreshView.as_view()),
     path('user/register/', userauths_views.RegisterView.as_view()),
     path('user/profile/<user_id>/', userauths_views.ProfileView.as_view()),
     path('user/password-reset/<email>/', userauths_views.PasswordResetEmailVerify.as_view()),
-
+  path('user/password-reset-confirm/', userauths_views.PasswordResetConfirmAPIView.as_view(), name='password-reset-confirm'),
+path("user/google-login/", userauths_views.GoogleLogin.as_view(), name="google_login"),
+path("personalized-products/<user_id>/", store_views.PersonalizedProductFeed.as_view(), name="personalized-feed"),
+path("popular-products/", store_views.PopularProductFeed.as_view(), name="popular-products"),
+    path("products/<int:product_id>/view/", store_views.TrackProductView.as_view(), name="track-view"),
     path('category/', store_views.CategoryListAPIView.as_view()),
     path('products/', store_views.ProductListAPIView.as_view()),
     path('products/<slug>/', store_views.ProductDetailAPIView.as_view(), name="product_detail"),
@@ -63,7 +70,8 @@ path('search_by_text/', store_views.search_by_text, name='text_search'),  # Rech
     path('conversations/vendor/', userauths_views.get_conversations_for_vendor, name="get_conversations_for_vendor"),
     path('conversations/user/', userauths_views.get_conversations_for_user, name="get_conversations_for_user"),
     path('products/followed/<int:user_id>/', store_views.products_from_followed_vendors, name='products-from-followed'),
-
+    # path('vendor-notifications/<int:user_id>/', store_views.VendorNotificationsView.as_view(), name='vendor-notifications'),
+    path('save-subscription/', store_views.SavePushSubscription.as_view(), name='save-subscription')
 ]  
 
 

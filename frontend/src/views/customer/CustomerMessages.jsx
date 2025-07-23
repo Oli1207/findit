@@ -37,6 +37,7 @@ const CustomerMessages = () => {
       if (currentPage === 1) {
         // Remplace toute la liste si c'est un refresh auto
         setConversations(res.data);
+        console.log(res.data)
       } else {
         // Sinon pour le scroll infini, ajoute uniquement les nouvelles
         setConversations((prev) => {
@@ -133,7 +134,7 @@ const CustomerMessages = () => {
           <p className="no-msg">Aucune conversation</p>
         )}
 
-        {isFetching && <div className="loading-text">Chargement…</div>}
+        {/* {isFetching && <div className="loading-text">Chargement…</div>} */}
         {!hasMore && <div className="no-msg">Plus de messages</div>}
       </div>
     </div>

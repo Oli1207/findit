@@ -31,15 +31,19 @@ SECRET_KEY = 'django-insecure-i7!sk!h%z5m87gs^mpb$*e3ons*ew1dk=5(1qcnp5=(%er43s)
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.137.1', '192.168.1.6', 'http://192.168.137.1:8000/', "http://192.168.1.6:5173/", "http://192.168.137.1:5173/"]
+ALLOWED_HOSTS = ['localhost','192.168.137.1', 'http://192.168.1.13:5173/', 'http://localhost:5173', '127.0.0.1', '192.168.137.3','192.168.1.13', '192.168.1.3', 'http://192.168.1.13:8000/', "http://192.168.1.3:5173/", "http://192.168.1.13:5173/"]
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # Exemple pour React
     "http://127.0.0.1:5173",
-    "http://192.168.1.6:5173",
-    "http://192.168.137.1:5173",
+    "http://192.168.1.3",
+    "http://192.168.1.3:5173",
+    "http://192.168.1.13:5173",
+    "http://192.168.1.13",
+    
+
 ]
-ALLOWED_HOSTS = ['*']
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -51,6 +55,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',
 
     #custom apps
     'store',
@@ -67,9 +72,57 @@ INSTALLED_APPS = [
     'anymail',
     'rest_framework.authtoken',
     #'drf_yasg',
+
+    'dj_rest_auth',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
+    'dj_rest_auth.registration',
     
 ]
 
+AUTHENTICATION_BACKENDS = (
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+)
+
+SITE_ID = 1
+SOCIALACCOUNT_ADAPTER = 'allauth.socialaccount.adapter.DefaultSocialAccountAdapter'
+ACCOUNT_ADAPTER = 'allauth.account.adapter.DefaultAccountAdapter'
+
+# Cette option est cruciale pour REST :
+SOCIALACCOUNT_AUTO_SIGNUP = True
+REST_AUTH_REGISTER_SERIALIZERS = {
+    'REGISTER_SERIALIZER': 'dj_rest_auth.registration.serializers.RegisterSerializer',
+}
+REST_USE_JWT = True
+ACCOUNT_EMAIL_VERIFICATION = "none"
+ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_AUTHENTICATION_METHOD = "email"
+ACCOUNT_EMAIL_REQUIRED = True
+SOCIALACCOUNT_QUERY_EMAIL = True
+
+# django-allauth (social)
+# Authenticate if local account with this email address already exists
+SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
+# Connect local account and social account if local account with that email address already exists
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
+SOCIALACCOUNT_PROVIDERS = {
+    "google": {
+        "APPS": [
+            {
+                "client_id": "928119001851-5gvirbilbfefb6pksgi43vdomk51npa0.apps.googleusercontent.com",
+                "secret": "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",
+                "key": "",
+            },
+        ],
+        "SCOPE": ["profile", "email"],
+        "AUTH_PARAMS": {
+            "access_type": "online",
+        },
+    }
+}
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'corsheaders.middleware.CorsMiddleware',
@@ -79,6 +132,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+     'allauth.account.middleware.AccountMiddleware',
 ]
 
 ROOT_URLCONF = 'backend.urls'
@@ -167,16 +221,25 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 STRIPE_PUBLIC_KEY = env('STRIPE_PUBLIC_KEY')
 STRIPE_SECRET_KEY = env('STRIPE_SECRET_KEY')
-MAILGUN_API_KEY = env('MAILGUN_API_KEY')
-MAILGUN_SENDER_DOMAIN = env('MAILGUN_SENDER_DOMAIN')
 
-ANYMAIL = {
-    # (exact settings here depend on your ESP...)
-    "MAILGUN_API_KEY":env('MAILGUN_API_KEY'),
-    "MAILGUN_SENDER_DOMAIN": env('MAILGUN_SENDER_DOMAIN')  # your Mailgun domain, if needed
-}
-FROM_EMAIL = "kangaholivier22@gmail.com"
-EMAIL_BACKEND = "anymail.backends.mailgun.EmailBackend",
+# MAILGUN_API_KEY = env('MAILGUN_API_KEY')
+# MAILGUN_SENDER_DOMAIN = env('MAILGUN_SENDER_DOMAIN')
+
+# ANYMAIL = {
+#     # (exact settings here depend on your ESP...)
+#     "MAILGUN_API_KEY":env('MAILGUN_API_KEY'),
+#     "MAILGUN_SENDER_DOMAIN": env('MAILGUN_SENDER_DOMAIN')  # your Mailgun domain, if needed
+# }
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+
+EMAIL_HOST_USER = 'kangaholivier22@gmail.com'  # Ton adresse Gmail
+EMAIL_HOST_PASSWORD = 'cmmp wndl angz hzip'  # Le mot de passe d’application (pas ton mot de passe Gmail normal !)
+
+FROM_EMAIL = EMAIL_HOST_USER
+
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
@@ -211,6 +274,13 @@ SIMPLE_JWT = {
     'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
     'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),
     'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1)
+}
+
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
 }
 
 JAZZMIN_SETTINGS = {

@@ -75,6 +75,9 @@ class Product(models.Model):
         rating_count = Review.objects.filter(product=self).count()
         return rating_count
 
+    def is_available(self):
+        return self.stock_qty > 0
+
     def gallery(self):
         return Gallery.objects.filter(product=self)
 
@@ -92,6 +95,16 @@ class Product(models.Model):
     
     def orders(self):
         return  CartOrder.objects.filter(product=self).count()
+
+
+
+class CategoryInterest(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    category = models.ForeignKey(Category, on_delete=models.CASCADE)
+    score = models.FloatField(default=0.0)
+
+    class Meta:
+        unique_together = ('user', 'category')
 
 class Gallery(models.Model):
     product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True)
@@ -268,7 +281,7 @@ class Notification(models.Model):
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     vendor = models.ForeignKey(Vendor, on_delete=models.SET_NULL, null=True, blank=True)
     order = models.ForeignKey(CartOrder, on_delete=models.SET_NULL, null=True, blank=True)
-    order_item = models.ForeignKey(CartOrderItem, on_delete=models.SET_NULL, null=True, blank=True)
+    # order_item = models.ForeignKey(CartOrderItem, on_delete=models.SET_NULL, null=True, blank=True)
     seen = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
 
@@ -325,3 +338,9 @@ class Tax(models.Model):
     class Meta:
         verbose_name_plural = "Taxes"
         ordering = ['country']
+
+class PushNotificationSubscription(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    endpoint = models.TextField()
+    keys_auth = models.TextField()
+    keys_p256dh = models.TextField()

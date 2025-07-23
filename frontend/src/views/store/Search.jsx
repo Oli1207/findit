@@ -11,6 +11,7 @@ import Review from "./Review";
 import "./tiktokfeed.css";
 
 import { useFollowStore } from "../../store/useFollowStore";
+import { syncOrdersIfOnline } from "./OrderQueue";
 
 const Toast = Swal.mixin({
   toast: true,
@@ -243,6 +244,20 @@ const handleSearchSubmit = async () => {
         console.error("Erreur copie lien :", err);
       });
   };
+  useEffect(() => {
+    const syncOnReconnect = () => {
+      if (navigator.onLine) {
+        syncOrdersIfOnline();
+      }
+    };
+  
+    window.addEventListener('online', syncOnReconnect);
+    syncOnReconnect(); // tentative immédiate si connecté
+  
+    return () => {
+      window.removeEventListener('online', syncOnReconnect);
+    };
+  }, []);
   return (
   
       <div className="app-container">

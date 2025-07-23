@@ -9,7 +9,9 @@ from store.models import *
 from store.serializers import *
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
-
+from rest_framework.generics import ListAPIView
+from django.db.models import Case, When, Value, BooleanField, FloatField, Subquery, OuterRef, F
+from django.db.models.functions import Coalesce
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -19,15 +21,47 @@ import numpy as np
 import stripe
 from rest_framework.parsers import MultiPartParser, FormParser
 from concurrent.futures import ThreadPoolExecutor
+
+from django.views.decorators.cache import never_cache
+from pywebpush import webpush, WebPushException
+import json
+
+
+def send_push_notification(user, title, body, url="/"):
+    from .models import PushNotificationSubscription
+    sub = PushNotificationSubscription.objects.filter(user=user).first()
+    if not sub:
+        return
+
+    subscription_info = {
+        "endpoint": sub.endpoint,
+        "keys": {
+            "p256dh": sub.keys_p256dh,
+            "auth": sub.keys_auth,
+        },
+    }
+
+    try:
+        webpush(
+            subscription_info,
+            data=json.dumps({"title": title, "body": body, "url": url}),
+            vapid_private_key="KRXTHGjfSv7r1gYfyvyGyu8IqqJTeeDlttY00TrBFbs",
+            vapid_claims={"sub": "mailto:kangaholivier22@gmail.com"},
+        )
+    except WebPushException as ex:
+        print("Web push failed: {}", repr(ex))
+
+
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
-def send_notification(user=None, vendor=None, order=None, order_item=None):
-    Notification.objects.create(
-        user=user,
-        vendor=vendor,
-        order=order,
-        order_item=order_item
-    )    
+# @receiver(post_save, sender=CartOrder)
+# def send_notification(user=None, vendor=None, order=None):
+#     Notification.objects.create(
+#         user=user,
+#         vendor=vendor,
+#         order=order,
+        
+#     )    
 
 # from rest_framework.decorators import api_view, permission_classes
 # from rest_framework.permissions import AllowAny
@@ -38,6 +72,38 @@ def send_notification(user=None, vendor=None, order=None, order_item=None):
 # from userauths.models import User
 # from product.serializers import ProductSerializer
 
+
+
+from rest_framework_simplejwt.tokens import UntypedToken
+from rest_framework_simplejwt.authentication import JWTAuthentication
+
+
+class SavePushSubscription(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        auth = request.headers.get("Authorization", None)
+        if auth is None or not auth.startswith("Bearer "):
+            return Response({"error": "Token manquant ou invalide"}, status=401)
+
+        try:
+            token_str = auth.split(" ")[1]
+            validated_token = JWTAuthentication().get_validated_token(token_str)
+            user = JWTAuthentication().get_user(validated_token)
+        except Exception as e:
+            return Response({"error": "Token invalide"}, status=401)
+
+        subscription = request.data
+
+        PushNotificationSubscription.objects.update_or_create(
+            user=user,
+            defaults={
+                'endpoint': subscription['endpoint'],
+                'keys_auth': subscription['keys']['auth'],
+                'keys_p256dh': subscription['keys']['p256dh'],
+            }
+        )
+        return Response({"status": "Subscription saved"})
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
@@ -66,6 +132,97 @@ class ProductListAPIView(generics.ListAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     permission_classes = [AllowAny]
+
+class PersonalizedProductFeed(ListAPIView):
+    serializer_class = ProductSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        user_id = self.kwargs['user_id']
+        user = User.objects.get(id=user_id)
+
+        followed_vendor_ids = Vendor.objects.filter(followers=user).values_list("id", flat=True)
+
+        interest_scores = CategoryInterest.objects.filter(
+            user=user,
+            category=OuterRef("category")
+        ).values("score")[:1]
+
+        products = Product.objects.filter(stock_qty__gte=1).annotate(
+            is_followed_vendor=Case(
+                When(vendor_id__in=followed_vendor_ids, then=Value(1.0)),
+                default=Value(0.0),
+                output_field=FloatField()
+            ),
+            interest_score=Coalesce(Subquery(interest_scores), Value(0.0)),
+            normalized_views=F('views') * 0.01,
+            timestamp_score=F('date')
+        ).order_by(
+            '-is_followed_vendor',
+            '-interest_score',
+            '-normalized_views',
+            '-timestamp_score'
+        )
+
+        # 🔍 DEBUG LOG — voir les scores
+        for p in products:
+            print(f"[USER={user_id}] ▶ {p.title} | Vendor={p.vendor_id} | "
+                f"is_followed={p.is_followed_vendor} | "
+                f"interest={p.interest_score} | views={p.views} | "
+                f"normalized_views={p.normalized_views}")
+
+        return products
+
+
+class PopularProductFeed(ListAPIView):
+    serializer_class = ProductSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        return Product.objects.filter(stock_qty__gte=1).order_by('-views', '-rating')[:50]
+
+    
+class TrackProductView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, product_id):
+        user_id = request.data.get("user_id")
+        duration = float(request.data.get("duration", 0))
+        product_id = request.data.get("product_id")
+
+        if not user_id or not product_id:
+            return Response({"error": "Paramètres manquants"}, status=400)
+
+        if duration < 15:
+            return Response({"msg": "Ignore durée trop courte"})
+
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({"error": "Utilisateur introuvable"}, status=404)
+
+        try:
+            product = Product.objects.get(id=product_id)
+        except Product.DoesNotExist:
+            return Response({"error": "Produit non trouvé"}, status=404)
+
+        product.views = F("views") + 1
+        product.save(update_fields=["views"])
+        
+
+        score_add = duration / 10.0
+
+        interest, created = CategoryInterest.objects.get_or_create(
+            user=user,
+            category=product.category,
+            defaults={"score": score_add}
+        )
+        if not created:
+            interest.score = F("score") + score_add
+            interest.save(update_fields=["score"])
+
+        return Response({"msg": "Vu enregistré"})
+
 
 class ProductDetailAPIView(generics.RetrieveAPIView):
     serializer_class = ProductSerializer
@@ -559,30 +716,77 @@ class ReviewListAPIView(generics.ListCreateAPIView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
-        product_id = self.kwargs['product_id']
-
-        product  = Product.objects.get(id=product_id)
-        reviews = Review.objects.filter(product=product)
-        return reviews
+        product_id = self.kwargs.get('product_id')
+        try:
+            product = Product.objects.get(id=product_id)
+            return Review.objects.filter(product=product)
+        except Product.DoesNotExist:
+            return Review.objects.none()
 
     def create(self, request, *args, **kwargs):
-        payload = request.data
-        
-        user_id = payload['user_id']
-        product_id = payload['product_id']
-        rating = payload['rating']
-        review = payload['review']
+        data = request.data
 
-        user = User.objects.get(id=user_id)
-        product = Product.objects.get(id=product_id)
+        # Vérifie la présence de tous les champs requis
+        required_fields = ['user_id', 'product_id', 'rating', 'review']
+        missing_fields = [field for field in required_fields if not data.get(field)]
 
+        if missing_fields:
+            return Response(
+                {"error": f"Champs manquants : {', '.join(missing_fields)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            user = User.objects.get(id=data['user_id'])
+        except User.DoesNotExist:
+            return Response(
+                {"error": "Utilisateur introuvable"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        try:
+            product = Product.objects.get(id=data['product_id'])
+        except Product.DoesNotExist:
+            return Response(
+                {"error": "Produit introuvable"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Vérifie que la note est un nombre entier entre 1 et 5
+        try:
+            rating = int(data['rating'])
+            if rating < 1 or rating > 5:
+                return Response(
+                    {"error": "La note doit être comprise entre 1 et 5"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        except ValueError:
+            return Response(
+                {"error": "La note doit être un entier"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Vérifie que le commentaire n’est pas vide ou trop court
+        review_text = data['review'].strip()
+        if len(review_text) < 3:
+            return Response(
+                {"error": "Le commentaire est trop court"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Création de l’avis
         Review.objects.create(
             user=user,
             product=product,
             rating=rating,
-            review=review
-            )
-        return Response({"message": "Review created successfully"}, status=status.HTTP_200_OK)
+            review=review_text
+        )
+
+        return Response(
+            {"message": "Avis créé avec succès"},
+                    status=status.HTTP_201_CREATED)
+        
+  
 @api_view(['GET'])
 def search_by_text(request):
     query = request.GET.get('query', '')
@@ -723,6 +927,15 @@ class CreateOrderAPIView(APIView):
                 state=state,
                 country=country,
             )
+            
+            send_push_notification(
+    user=product.vendor.user,
+    title="Nouvelle commande reçue",
+    body=f"La commande {order.oid} vient d’être passée.",
+    url=f"/vendor/orders/{order.oid}/"
+)
+
+
             return Response(
                 {"message": "Order created successfully.", "order_id": order.oid},
                 status=status.HTTP_201_CREATED,

@@ -169,9 +169,9 @@ function VendorSettings() {
 
   return (
     <div className="container-fluid" id="main" >
-      <div className="row row-offcanvas row-offcanvas-left h-100">
-      <SidebarVendor/>
-        <div className="col-md-9 col-lg-10 main mt-4">
+      <div className="row row-offcanvas row-offcanvas-left">
+      {/* <SidebarVendor/> */}
+        <div className="col-md-9 col-lg-10 main">
           <div className="container">
             <div className="main-body">
               <ul className="nav nav-pills mb-3" id="pills-tab" role="tablist">

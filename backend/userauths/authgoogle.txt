@@ -1,0 +1,3 @@
+ID CLIENT : 928119001851-5gvirbilbfefb6pksgi43vdomk51npa0.apps.googleusercontent.com
+
+code secret du client : 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

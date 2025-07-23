@@ -14,14 +14,14 @@ function OrdersVendorTiktok() {
   if (userData?.vendor_id === 0) {
     window.location.href = '/vendor/register/';
   }
-
+  console.log(userData)
   useEffect(() => {
     apiInstance
       .get(`vendor/orders/${userData?.vendor_id}/`)
       .then(res => setOrders(res.data))
       .catch(console.error);
       console.log(orders)
-  }, [userData.vendor_id]);
+  }, [userData?.vendor_id]);
 
   const handleAcceptOrder = (oid) => {
     setAcceptedOrders(prev => ({
@@ -51,7 +51,7 @@ function OrdersVendorTiktok() {
       const conversation = response.data;
       console.log("Conversation started:", conversation);
 
-      navigate(`/conversation/${conversation.id}`);
+      navigate(`/conversation/${conversation?.id}`);
       console.log(conversation.id);
     } catch (error) {
       console.error(

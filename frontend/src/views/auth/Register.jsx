@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { register } from '../../utils/auth';
-import { useNavigate } from 'react-router-dom';
+import { login, register, setAuthUser } from '../../utils/auth';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../../store/auth';
+import { GoogleLogin } from '@react-oauth/google';
+import apiInstance from '../../utils/axios';
+import Swal from 'sweetalert2'
 
 function Register() {
   const [full_name, setFullname] = useState("");
@@ -20,6 +23,26 @@ function Register() {
     }
   }, [isLoggedIn, navigate]);
 
+  const handleGoogleLogin = async (tokenId, navigate) => {
+    const axios = apiInstance;
+    try {
+        const { data } = await axios.post("user/google-login/", {
+            access_token: tokenId,
+        });
+
+        if (data.access && data.refresh) {
+            setAuthUser(data.access, data.refresh);
+            // Swal.fire("Connexion réussie avec Google", "", "success");
+            navigate("/");
+        } else {
+            console.warn("Réponse inattendue du backend", data);
+        }
+    } catch (error) {
+        console.error("Erreur Google Login :", error);
+        console.log("Réponse d'erreur :", error.response?.data);
+        Swal.fire("Erreur", "Impossible de se connecter avec Google", "error");
+    }
+};
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -118,7 +141,15 @@ function Register() {
                 {isLoading ? "Création en cours..." : "Créer un compte"}
               </button>
             </form>
-            
+            <GoogleLogin
+  onSuccess={(credentialResponse) => {
+    const tokenId = credentialResponse.credential;
+    handleGoogleLogin(tokenId, navigate); // mutualisé
+  }}
+  onError={() => {
+    Swal.fire("Erreur", "La connexion Google a échoué", "error");
+  }}
+/>
             <div className="text-center mt-3">
               <p>Vous avez déjà un compte? <a href="/login">Se connecter</a></p>
             </div>

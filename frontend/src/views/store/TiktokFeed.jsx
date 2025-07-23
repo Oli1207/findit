@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import apiInstance from "../../utils/axios";
 import { Link, useNavigate } from "react-router-dom";
 import GetCurrentAddress from "../plugin/UserCountry";
@@ -9,6 +9,12 @@ import Review from "./Review";
 import "./tiktokfeed.css";
 // import star from 'etoile.png'
 import { useFollowStore } from "../../store/useFollowStore";
+import ReloadPrompt from "../../Prompt";
+import InstallButton from "../../InstallButton";
+import { setUser } from "../../utils/auth";
+import { saveOrderOffline, syncOrdersIfOnline } from "./OrderQueue";
+import { subscribeUserToPush } from "../../utils/push";
+import { syncReviewsIfOnline } from "./ReviewOffline";
 
 const TikTokFeed = () => {
   const [profileData, setProfileData] = useState(null);
@@ -37,17 +43,39 @@ const TikTokFeed = () => {
     // country: currentAddress.country,
   });
 
+  //tous les syncs
+  useEffect(() => {
+  setUser(); // ← essentiel pour lire le cookie et décoder le user
+}, []);
+
+useEffect(() => {
+  const syncAll = () => {
+    if (navigator.onLine) {
+      syncOrdersIfOnline();
+      syncReviewsIfOnline();
+    }
+  };
+
+  syncAll();
+  window.addEventListener("online", syncAll);
+  return () => window.removeEventListener("online", syncAll);
+}, []);
+
+//fin sync
+
+
   // const [followStates, setFollowStates] = useState({});
   const { followStates, fetchFollowStates, toggleFollow } = useFollowStore();
 
   const [search, setSearch] = useState("");
 
-  const handleSearchChange = (event) => setSearch(event.target.value);
-  const handleSearchSubmit = () => navigate(`/search?query=${search}`);
+  const [viewCountTrigger, setViewCountTrigger] = useState(0);
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
+        console.log("userData", userData); // ➤ ajoute ça
+
         const response = await axios.get(`user/profile/${userData?.user_id}/`); // Remplacez par l'URL complète si nécessaire
         setProfileData(response.data);
         console.log(response.data);
@@ -60,41 +88,103 @@ const TikTokFeed = () => {
   }, [userData?.user_id]);
 
   const handleOrderClick = (product) => {
+     if (!userData) {
+      navigate('/login')
+      return;
+    }
     setOrderProduct(product);
   };
 
   const handleCloseOrder = () => {
     setOrderProduct(null);
   };
+useEffect(() => {
+  const fetchProducts = async () => {
+    try {
+      if (userData?.user_id) {
+        const response = await axios.get(`personalized-products/${userData.user_id}/`);
+        setProducts(response.data);
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const productsResponse = await axios.get("products/");
-        setProducts(productsResponse.data);
-        console.log(productsResponse.data);
+        console.log("💡 Produits personnalisés pour:", userData.user_id);
+        response.data.forEach((product, i) => {
+          console.log(
+            `#${i + 1} ${product.title} — vues: ${product.views}, rating: ${product.rating}, vendor: ${product.vendor?.name}`
+          );
+        });
 
-        const vendorIds = productsResponse.data.map((p) => p.vendor?.id).filter((id) => id);
+        const vendorIds = response.data.map((p) => p.vendor?.id).filter(Boolean);
         await fetchFollowStates(vendorIds, userData?.user_id);
-        //         const initialFollowStates = {};
-        // for (const product of productsResponse.data) {
-        //   const vendorId = product.vendor?.id;
-        //   if (vendorId) {
-        //     const followResponse = await axios.get(
-        //       `vendors/${vendorId}/is-following/${userData?.user_id}/`
-        //     );
-        //     initialFollowStates[vendorId] = followResponse.data.following;
-        //   }
-        // }
-        // console.log(initialFollowStates);
-        // setFollowStates(initialFollowStates);
-      } catch (error) {
-        console.error("Erreur chargement produits :", error);
+      } else {
+        const response = await axios.get(`popular-products/`);
+        setProducts(response.data);
       }
-    };
+    } catch (error) {
+      console.error("Erreur chargement produits :", error);
+    }
+  };
 
-    fetchProducts();
-  }, []);
+  fetchProducts();
+}, [userData?.user_id, viewCountTrigger]); // ← écoute aussi les vues
+
+const startTimesRef = useRef({});
+
+useEffect(() => {
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        const productId = entry.target.getAttribute("data-id");
+        if (!productId) return;
+
+        if (entry.isIntersecting) {
+          if (!startTimesRef.current[productId]) {
+            startTimesRef.current[productId] = Date.now();
+            console.log(`👁️ Produit ${productId} visible → start`);
+          }
+        } else {
+          const startTime = startTimesRef.current[productId];
+          if (startTime) {
+            const duration = (Date.now() - startTime) / 1000;
+            console.log(`👋 Produit ${productId} sort → ${duration.toFixed(2)}s`);
+
+            if (duration >= 15) {
+              console.log(`✅ Envoi vue pour ${productId} (${duration.toFixed(2)}s)`);
+              sendView(productId, duration);
+            } else {
+              console.log(`⏱️ Ignoré : temps trop court pour ${productId} (${duration.toFixed(2)}s)`);
+            }
+            delete startTimesRef.current[productId];
+          }
+        }
+      });
+    },
+    { threshold: 0.7 }
+  );
+
+  const items = document.querySelectorAll(".feed-item[data-id]");
+  items.forEach((el) => observer.observe(el));
+
+  return () => {
+    items.forEach((el) => observer.unobserve(el));
+  };
+}, []);
+
+const sendView = async (productId, duration) => {
+  try {
+    await axios.post(`products/${productId}/view/`, {
+      user_id: userData?.user_id,
+      product_id: productId,
+      duration: duration,
+    });
+    console.log(`Vue enregistrée pour ${productId} (durée: ${duration}s)`);
+
+    // ✅ Déclencher refetch du feed
+    setViewCountTrigger((prev) => prev + 1);
+  } catch (error) {
+    console.error("Erreur enregistrement vue :", error);
+  }
+};
+
+
 
   // const handleFollowToggle = (userId, vendorId) => {
   //   if (!userId || !vendorId) {
@@ -191,60 +281,78 @@ const TikTokFeed = () => {
   };
 
   const handlePlaceOrder = async (product_id, price, vendor_id) => {
-    const formData = new FormData();
-    formData.append("product_id", product_id);
-    formData.append("user_id", userData?.user_id);
-    formData.append("qty", qtyValue);
-    formData.append("price", price);
-    formData.append("vendor", vendor_id);
-    formData.append("size", sizeValue);
-    formData.append("color", colorValue);
-    formData.append("full_name", userData?.full_name);
-
-    if (
-      useProfileAddress &&
-      profileData?.mobile &&
-      profileData?.address &&
-      profileData?.city
-    ) {
-      // On utilise le profil existant
-      formData.append("mobile", profileData.mobile);
-      formData.append("address", profileData.address);
-      formData.append("city", profileData.city);
-      formData.append("state", profileData.state);
-      formData.append("country", profileData.country);
-    } else {
-      // Sinon on prend les valeurs du formulaire
-      formData.append("mobile", customAddress.mobile);
-      formData.append("address", customAddress.address);
-      formData.append("city", customAddress.city);
-
-      // On met à jour le profil en même temps
-      const profileForm = new FormData();
-      profileForm.append("mobile", customAddress.mobile);
-      profileForm.append("address", customAddress.address);
-      profileForm.append("city", customAddress.city);
-
-      await axios.patch(`user/profile/${userData?.user_id}/`, profileForm);
+    if (!userData) {
+      navigate('/login')
+      return;
     }
-
-    try {
-      console.log(formData.values);
-      const response = await axios.post(`create-order/`, formData);
-      Swal.fire({
-        icon: "success",
-        title: "Commande passée avec succès !",
-        text: response.data.message,
-      });
-      setOrderProduct(null);
-    } catch (error) {
-      Swal.fire({
-        icon: "error",
-        title: "Échec commande",
-        text: error.response?.data?.message || "Erreur réseau",
-      });
-    }
+  const orderData = {
+    product_id,
+    user_id: userData?.user_id,
+    qty: qtyValue,
+    price,
+    vendor: vendor_id,
+    size: sizeValue,
+    color: colorValue,
+    full_name: userData?.full_name,
+    mobile: useProfileAddress ? profileData?.mobile : customAddress.mobile,
+    address: useProfileAddress ? profileData?.address : customAddress.address,
+    city: useProfileAddress ? profileData?.city : customAddress.city,
+    state: useProfileAddress ? profileData?.state : '',
+    country: useProfileAddress ? profileData?.country : '',
   };
+
+  // ✅ Mise à jour profil si nécessaire
+  if (!useProfileAddress) {
+    const profileForm = new FormData();
+    profileForm.append("mobile", customAddress.mobile);
+    profileForm.append("address", customAddress.address);
+    profileForm.append("city", customAddress.city);
+    try {
+      await axios.patch(`user/profile/${userData?.user_id}/`, profileForm);
+    } catch (error) {
+      console.error("Erreur mise à jour profil :", error);
+    }
+  }
+
+  // ✅ Vérifier connexion
+  if (!navigator.onLine) {
+  saveOrderOffline(orderData);
+  Swal.fire({
+    icon: "info",
+    title: "Commande enregistrée hors-ligne",
+    text: "Elle sera automatiquement envoyée dès que vous serez reconnecté.",
+  });
+  return;
+}
+
+
+  // ✅ Envoi au serveur
+  try {
+    const formData = new FormData();
+    Object.entries(orderData).forEach(([key, value]) => {
+      formData.append(key, value);
+    });
+
+    const response = await axios.post(`create-order/`, formData);
+
+    Swal.fire({
+      icon: "success",
+      title: "Commande passée avec succès !",
+      text: response.data.message,
+    });
+    setOrderProduct(null);
+  } catch (error) {
+    Swal.fire({
+      icon: "error",
+      title: "Échec commande",
+      text: error.response?.data?.message || "Erreur réseau",
+    });
+
+    saveOrderOffline(orderData);
+    alert("Commande enregistrée hors-ligne.");
+  }
+};
+
 
   const addToWishList = async (productId) => {
     const formdata = new FormData();
@@ -290,19 +398,28 @@ const TikTokFeed = () => {
         console.error("Erreur copie lien :", err);
       });
   };
-
+useEffect(() => {
+    const access = localStorage.getItem("access");
+    if (userData) {
+      // L'utilisateur est connecté, on tente d'enregistrer la subscription
+      subscribeUserToPush();
+    }
+  }, []);
   return (
     <div className="app-container">
+       <ReloadPrompt/>
+      <InstallButton/>
       {/* Top navigation */}
       <div className="top-bar">
         <div className="tabs">
           <Link to="/haul" className="text-decoration-none text-white">
-            <span>Haul</span>
+            <span>Haul 
+</span>
           </Link>
           <Link to="/suivis" className="text-decoration-none text-white">
-            <span>Suivis</span>
+            <span>Suivis </span>
           </Link>
-          <span className="active">Accueil</span>
+          <span className="active">Accueil</span>  
         </div>
         <div className="search-icon">
           <Link to="/search" className="text-decoration-none text-white">
@@ -313,8 +430,10 @@ const TikTokFeed = () => {
 
       {/* Feed */}
       <div className="feed-container">
-        {products.map((product) => (
-          <div className="feed-item" key={product.id}>
+         {products.map((product) => (
+          
+          <div className="feed-item" data-id={product.id} key={product.id}>
+          
             <img
               src={product.image}
               alt={product.title}
@@ -361,7 +480,7 @@ const TikTokFeed = () => {
                   </Link>
                 </>
               )}
-              <h2>{product.title}</h2>
+              <h2> <Link to={`/detail/${product.slug}`}>{product.title}</Link></h2>
 
               <p>{product.category?.title}</p>
               <div className="specifications mt-2">
@@ -372,7 +491,8 @@ const TikTokFeed = () => {
                       onClick={() => toggleSpecification(product.id)}
                     >
                       <i className="fas fa-info-circle me-2"></i>
-                      Spécifications
+                      Spécifications 
+
                     </button>
 
                     {specificationStates[product.id] && (
@@ -464,7 +584,7 @@ const TikTokFeed = () => {
           >
             <i class="fas fa-shopping-bag"></i>
             <br />
-            Acheteur
+            Acheteur  <InstallButton/>
           </Link>
         </div>
       </div>
@@ -611,8 +731,8 @@ const TikTokFeed = () => {
               className="btn btn-primary w-100 my-2"
               onClick={() =>
                 handlePlaceOrder(
-                  orderProduct.id,
-                  orderProduct.price,
+                  orderProduct?.id,
+                  orderProduct?.price,
                   orderProduct.vendor?.id
                 )
               }

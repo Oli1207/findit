@@ -1,0 +1,15 @@
+    
+                                  <button onClick={() => handleStartConversation(vendor?.id)}>
+                                   
+                    <h1 className="fw-light">{vendor.name}</h1>
+                      </button> 
+                     <button
+                    onClick={() =>
+                      toggleFollow(userData?.user_id, vendor?.id)
+                    }
+                  >
+                    {followStates[vendor?.id]
+                      ? "Arrêter de suivre"
+                      : "S’abonner"}
+                  </button>
+                    <p className="lead text-muted">{vendor.description}</p>
