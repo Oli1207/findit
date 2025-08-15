@@ -14,7 +14,7 @@ const Toast = Swal.mixin({
 
 export const login = async (email, password) => {
     try {
-        const { data, status } = await axios.post('http://192.168.1.13:8000/api/v1/user/token/', {
+        const { data, status } = await axios.post('https://backend.findit.deals/api/v1/user/token/', {
             email, password
         });
 
@@ -39,7 +39,7 @@ export const login = async (email, password) => {
 
 export const register = async (full_name, email, phone, password, password2) => {
     try {
-        const { data } = await axios.post('http://192.168.1.13:8000/api/v1/user/register/', {
+        const { data } = await axios.post('https://backend.findit.deals/api/v1/user/register/', {
             full_name,                     
             email,
             phone,
@@ -121,7 +121,7 @@ export const getRefreshToken = async () => {
     }
 
     try {
-        const response = await axios.post('http://192.168.1.13:8000/api/v1/user/token/refresh/', {
+        const response = await axios.post('https://backend.findit.deals/api/v1/user/token/refresh/', {
             refresh: refresh_token,
         });
         return response.data; // Expected to return { access: 'new_access_token' }

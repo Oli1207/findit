@@ -18,14 +18,15 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 import cv2
 import numpy as np
-# import stripe
+import stripe
 from rest_framework.parsers import MultiPartParser, FormParser
 from concurrent.futures import ThreadPoolExecutor
+from itertools import chain
 
 from django.views.decorators.cache import never_cache
 from pywebpush import webpush, WebPushException
 import json
-
+from rest_framework.pagination import PageNumberPagination
 
 def send_push_notification(user, title, body, url="/"):
     from .models import PushNotificationSubscription
@@ -52,7 +53,7 @@ def send_push_notification(user, title, body, url="/"):
         print("Web push failed: {}", repr(ex))
 
 
-# stripe.api_key = settings.STRIPE_SECRET_KEY
+
 
 # @receiver(post_save, sender=CartOrder)
 # def send_notification(user=None, vendor=None, order=None):
@@ -173,15 +174,38 @@ class PersonalizedProductFeed(ListAPIView):
 
         return products
 
+class SmallResultsSetPagination(PageNumberPagination):
+    page_size = 5
+    page_size_query_param = 'page_size'  # facultatif, permet de changer depuis le frontend
+    max_page_size = 50
 
-class PopularProductFeed(ListAPIView):
-    serializer_class = ProductSerializer
+
+class PopularProductFeed(APIView):
     permission_classes = [AllowAny]
+    pagination_class = SmallResultsSetPagination
 
-    def get_queryset(self):
-        return Product.objects.filter(stock_qty__gte=1).order_by('-views', '-rating')[:50]
+    def get(self, request, *args, **kwargs):
+        products = Product.objects.filter(stock_qty__gte=1).order_by('-views', '-rating')[:50]
+        presentations = Presentation.objects.annotate(
+            likes_count=models.Count('likes')
+        ).order_by('-likes_count')[:20]
 
-    
+        product_data = ProductSerializer(products, many=True, context={'request': request}).data
+        for item in product_data:
+            item["type"] = "product"
+
+        presentation_data = PresentationSerializer(presentations, many=True, context={'request': request}).data
+        for item in presentation_data:
+            item["type"] = "presentation"
+
+        combined = list(chain(product_data, presentation_data))
+        combined.sort(key=lambda x: x.get("likes_count", 0) if x["type"] == "presentation" else x.get("views", 0), reverse=True)
+
+        paginator = self.pagination_class()
+        result_page = paginator.paginate_queryset(combined, request)
+        return paginator.get_paginated_response(result_page)
+
+
 class TrackProductView(APIView):
     permission_classes = [AllowAny]
 
@@ -273,6 +297,73 @@ class PresentationListAPIView(generics.ListAPIView):
     serializer_class = PresentationSerializer
     permission_classes = [AllowAny]
 
+class UnifiedFeedAPIView(APIView):
+    permission_classes = [AllowAny]
+    pagination_class = SmallResultsSetPagination
+
+    def get(self, request, user_id):
+        products = Product.objects.filter(stock_qty__gte=1)
+        presentations = Presentation.objects.all()
+
+        product_data = ProductSerializer(products, many=True, context={"request": request}).data
+        for item in product_data:
+            item["type"] = "product"
+
+        presentation_data = PresentationSerializer(presentations, many=True, context={"request": request}).data
+        for item in presentation_data:
+            item["type"] = "presentation"
+
+        combined = list(chain(product_data, presentation_data))
+        # combined.sort(...) si nécessaire
+
+        paginator = self.pagination_class()
+        result_page = paginator.paginate_queryset(combined, request)
+        return paginator.get_paginated_response(result_page)
+
+class ProductSoldeAPIView(ListAPIView):
+    permission_classes = [AllowAny]
+    serializer_class = ProductSerializer
+
+    # On filtre directement les produits en solde
+    def get_queryset(self):
+        return Product.objects.filter(solde=True)
+
+class ProductsByCategoryAPIView(APIView):
+    def get(self, request, category_id):
+        try:
+            category = Category.objects.get(id=category_id, active=True)
+        except Category.DoesNotExist:
+            return Response({"detail": "Catégorie non trouvée"}, status=status.HTTP_404_NOT_FOUND)
+        
+        products = Product.objects.filter(category=category, status="disponible")
+        serializer = ProductSerializer(products, many=True, context={"request": request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+class VendorContentAPIView(APIView):
+    permission_classes = [AllowAny]  # Ou AllowAny si pas de login requis
+
+    def get(self, request, vendor_id):
+        try:
+                # Récupérer le vendeur
+            vendor = Vendor.objects.get(id=vendor_id)
+
+                # Récupérer tous les produits et présentations du vendeur
+            products = Product.objects.filter(vendor=vendor)
+            presentations = Presentation.objects.filter(vendor=vendor)
+
+                # Sérialiser les données
+            products_serializer = ProductSerializer(products, many=True, context={'request': request})
+            presentations_serializer = PresentationSerializer(presentations, many=True, context={'request': request})
+
+                # Retourner tout dans une seule réponse
+            return Response({
+                "products": products_serializer.data,
+                "presentations": presentations_serializer.data
+                })
+
+        except Vendor.DoesNotExist:
+            return Response({"error": "Vendeur non trouvé"}, status=404)
+            
 class LikePresentationAPIView(APIView):
     permission_classes = [AllowAny]
 

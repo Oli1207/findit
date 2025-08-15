@@ -90,3 +90,24 @@ html, body {
   object-fit: cover;
   object-position: center;
 }
+.shop-tabs {
+  display: flex;
+  justify-content: space-around;
+  border-top: 0.5px solid #ccc;
+  border-bottom: 0.5px solid #ccc;
+  background: white;
+}
+
+.shop-tabs button {
+  background: none;
+  border: none;
+  padding: 12px;
+  font-size: 18px;
+  color: #777;
+  cursor: pointer;
+}
+
+.shop-tabs button.active {
+  color: black;
+  border-bottom: 2px solid black;
+}

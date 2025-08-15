@@ -191,7 +191,7 @@ function AddProduct() {
             
             });
 
-             navigate('/vendor/products/')
+             navigate('/')
             
             Swal.fire({
                 icon: 'success',
@@ -210,6 +210,22 @@ function AddProduct() {
         }
     };
 
+    const getColorNameFromHex = (hex) => {
+    const colorNames = {
+        "#ffffff": "White",
+        "#000000": "Black",
+        "#ff0000": "Red",
+        "#00ff00": "Lime",
+        "#0000ff": "Blue",
+        "#ffff00": "Yellow",
+        "#ffa500": "Orange",
+        "#800080": "Purple",
+        "#808080": "Gray",
+        "#00ffff": "Cyan",
+        "#ffc0cb": "Pink"
+    };
+    return colorNames[hex.toLowerCase()] || "Custom Color";
+};
 
 
     return (
@@ -229,7 +245,7 @@ function AddProduct() {
                                         aria-labelledby="pills-home-tab"
                                     >
                                         <div className="row gutters-sm shadow p-4 rounded">
-                                            <h4 className="mb-4">Product Details</h4>
+                                            <h4 className="mb-4">Détails du produit</h4>
                                             <div className="col-md-4 mb-3">
                                                 <div className="card h-100">
                                                     <div className="card-body">
@@ -269,7 +285,7 @@ function AddProduct() {
                                                         <div className="row text-dark">
                                                             <div className="col-lg-12 mb-2">
                                                                 <label htmlFor="" className="mb-2">
-                                                                    Product Thumbnail
+                                                                    Miniature du produit
                                                                 </label>
                                                                 <input
                                                                     type="file"
@@ -281,7 +297,7 @@ function AddProduct() {
                                                             </div>
                                                             <div className="col-lg-12 mb-2 ">
                                                                 <label htmlFor="" className="mb-2">
-                                                                    Title
+                                                                    Titre
                                                                 </label>
                                                                 <input
                                                                     type="text"
@@ -324,7 +340,7 @@ function AddProduct() {
                                                             </div>
                                                             <div className="col-lg-6 mb-2">
                                                                 <label htmlFor="" className="mb-2">
-                                                                    Category
+                                                                    Catégorie
                                                                 </label>
                                                                 <select
                                                                     className="select form-control"
@@ -342,7 +358,7 @@ function AddProduct() {
                                                             
                                                             <div className="col-lg-6 mb-2 ">
                                                                 <label htmlFor="" className="mb-2">
-                                                                    Sale Price
+                                                                   Prix
                                                                 </label>
                                                                 <input
                                                                     type="number"
@@ -352,7 +368,7 @@ function AddProduct() {
                                                                     onChange={handleProductInputChange}
                                                                 />
                                                             </div>
-                                                            <div className="col-lg-6 mb-2 ">
+                                                            {/* <div className="col-lg-6 mb-2 ">
                                                                 <label htmlFor="" className="mb-2">
                                                                     Regular Price
                                                                 </label>
@@ -375,10 +391,10 @@ function AddProduct() {
                                                                     value={product.shipping_amount || ''}
                                                                     onChange={handleProductInputChange}
                                                                 />
-                                                            </div>
+                                                            </div> */}
                                                             <div className="col-lg-6 mb-2 ">
                                                                 <label htmlFor="" className="mb-2">
-                                                                    Stock Qty
+                                                                    Quantité
                                                                 </label>
                                                                 <input
                                                                     type="number"
@@ -386,9 +402,12 @@ function AddProduct() {
                                                                     name="stock_qty"
                                                                     value={product.stock_qty || ''}
                                                                     onChange={handleProductInputChange}
+                                                                    required
                                                                 />
                                                             </div>
-                                                           
+                                                           <small>
+                                                            vous pouvez déjà créer le produit les autres champs sont facultatifs
+                                                            </small>
                                                         </div>
 
                                                     </div>
@@ -403,7 +422,7 @@ function AddProduct() {
                                         aria-labelledby="pills-profile-tab"
                                     >
                                         <div className="row gutters-sm shadow p-4 rounded">
-                                            <h4 className="mb-4">Product Image</h4>
+                                            <h4 className="mb-4">Image du produit</h4>
                                             <div className="col-md-12">
                                                 <div className="card mb-3">
                                                     <div className="card-body">
@@ -429,7 +448,7 @@ function AddProduct() {
                                                                 </div>
                                                                 <div className="col-lg-6 mb-2">
                                                                     <label htmlFor="" className="mb-2">
-                                                                        Product Image
+                                                                        Image du produit
                                                                     </label>
                                                                     <input
                                                                         type="file"
@@ -440,18 +459,18 @@ function AddProduct() {
                                                                     />
                                                                 </div>
                                                                 <div className="col-lg-3 mt-2">
-                                                                    <button onClick={() => handleRemove(index, setGallery)} type='button' className='btn btn-danger mt-4'>Remove</button>
+                                                                    <button onClick={() => handleRemove(index, setGallery)} type='button' className='btn btn-danger mt-4'>Supprimez</button>
                                                                 </div>
 
                                                             </div>
                                                         ))}
 
                                                         {gallery < 1 &&
-                                                            <h4>No Images Selected</h4>
+                                                            <h4>Pas d'images ajoutées</h4>
                                                         }
 
                                                         <button type='button' onClick={() => handleAddMore(setGallery)} className="btn btn-primary mt-2">
-                                                            <i className="fas fa-plus" /> Add More Images
+                                                            <i className="fas fa-plus" /> Ajoutez plus d'images
                                                         </button>
                                                     </div>
                                                 </div>
@@ -475,7 +494,7 @@ function AddProduct() {
                                                             <div className="row text-dark">
                                                                 <div className="col-lg-3 mb-2">
                                                                     <label htmlFor="" className="mb-2">
-                                                                        Title
+                                                                        Titre
                                                                     </label>
                                                                     <input
                                                                         type="text"
@@ -487,7 +506,7 @@ function AddProduct() {
                                                                 </div>
                                                                 <div className="col-lg-6 mb-2">
                                                                     <label htmlFor="" className="mb-2">
-                                                                        Content
+                                                                        Texte
                                                                     </label>
                                                                     <input
                                                                         type="text"
@@ -498,17 +517,17 @@ function AddProduct() {
                                                                     />
                                                                 </div>
                                                                 <div className="col-lg-3 mb-2">
-                                                                    <button type='button' onClick={() => handleRemove(index, setSpecifications)} className='btn btn-danger mt-4'>Remove</button>
+                                                                    <button type='button' onClick={() => handleRemove(index, setSpecifications)} className='btn btn-danger mt-4'>Supprimez</button>
                                                                 </div>
                                                             </div>
                                                         ))}
 
                                                         {specifications.length < 1 &&
-                                                            <h4>No Specification Form</h4>
+                                                            <h4>Pas de spécification</h4>
                                                         }
 
                                                         <button type='button' onClick={() => handleAddMore(setSpecifications)} className="btn btn-primary mt-2">
-                                                            <i className="fas fa-plus" /> Add More Specifications
+                                                            <i className="fas fa-plus" /> Ajouter plus de spécifications
                                                         </button>
                                                     </div>
                                                 </div>
@@ -532,7 +551,7 @@ function AddProduct() {
                                                             <div className="row text-dark">
                                                                 <div className="col-lg-3 mb-2">
                                                                     <label htmlFor="" className="mb-2">
-                                                                        Size
+                                                                        Taille
                                                                     </label>
                                                                     <input
                                                                         type="text"
@@ -545,7 +564,7 @@ function AddProduct() {
 
                                                                     />
                                                                 </div>
-                                                                <div className="col-lg-6 mb-2">
+                                                                {/* <div className="col-lg-6 mb-2">
                                                                     <label htmlFor="" className="mb-2">
                                                                         Price
                                                                     </label>
@@ -559,17 +578,17 @@ function AddProduct() {
                                                                         onChange={(e) => handleInputChange(index, 'price', e.target.value, setSizes)}
 
                                                                     />
-                                                                </div>
+                                                                </div> */}
                                                                 <div className="col-lg-3 mt-2">
-                                                                    <button type='button' onClick={() => handleRemove(index, setSizes)} className='btn btn-danger mt-4'>Remove</button>
+                                                                    <button type='button' onClick={() => handleRemove(index, setSizes)} className='btn btn-danger mt-4'>Supprimez</button>
                                                                 </div>
                                                             </div>
                                                         ))}
                                                         {sizes < 1 &&
-                                                            <h4>No Size Added</h4>
+                                                            <h4>Pas de taille ajoutée</h4>
                                                         }
                                                         <button type='button' onClick={() => handleAddMore(setSizes)} className="btn btn-primary mt-2">
-                                                            <i className="fas fa-plus" /> Add More Sizes
+                                                            <i className="fas fa-plus" /> Ajouter plus de tailles
                                                         </button>
                                                     </div>
                                                 </div>
@@ -583,79 +602,75 @@ function AddProduct() {
                                         aria-labelledby="pills-color-tab"
                                     >
                                         <div className="row gutters-sm shadow p-4 rounded">
-                                            <h4 className="mb-4">Color</h4>
+                                            <h4 className="mb-4">Couleur</h4>
                                             <div className="col-md-12">
                                                 <div className="card mb-3">
                                                     <div className="card-body">
-                                                        {colors.map((c, index) => (
-                                                            <div className="row text-dark mb-3">
-                                                                <div className="col-lg-2 mb-2">
-                                                                    <label htmlFor="" className="mb-2">
-                                                                        Name
-                                                                    </label>
-                                                                    <input
-                                                                        type="text"
-                                                                        className="form-control"
-                                                                        name=""
-                                                                        placeholder="Green"
-                                                                        id=""
-                                                                        value={c.name || ''}
-                                                                        onChange={(e) => handleInputChange(index, 'name', e.target.value, setColors)}
+                                                       {colors.map((c, index) => (
+    <div className="row text-dark mb-3" key={index}>
+        <div className="col-lg-2 mb-2">
+            <label htmlFor="" className="mb-2">Choisissez une couleur</label>
+            <input
+                type="color"
+                className="form-control form-control-color"
+                value={c.color_code || '#ffffff'}
+                onChange={(e) => {
+                    const hex = e.target.value;
+                    handleInputChange(index, 'color_code', hex, setColors);
+                    const name = getColorNameFromHex(hex); // Fonction ci-dessous
+                    handleInputChange(index, 'name', name, setColors);
+                }}
+                title="Choisissez une couleur"
+            />
+        </div>
 
-                                                                    />
-                                                                </div>
-                                                                <div className="col-lg-2 mb-2">
-                                                                    <label htmlFor="" className="mb-2">
-                                                                        Code
-                                                                    </label>
-                                                                    <input
-                                                                        type="text"
-                                                                        placeholder="#f4f7f6"
-                                                                        className="form-control"
-                                                                        name=""
-                                                                        id=""
-                                                                        value={c.color_code || ''}
-                                                                        onChange={(e) => handleInputChange(index, 'color_code', e.target.value, setColors)}
+        <div className="col-lg-2 mb-2">
+            <label htmlFor="" className="mb-2">Couleur</label>
+            <input
+                type="text"
+                className="form-control"
+                value={c.name || ''}
+                readOnly
+            />
+        </div>
 
-                                                                    />
-                                                                </div>
-                                                                <div className="col-lg-3 mb-2">
-                                                                    <label htmlFor="" className="mb-2">
-                                                                        Image
-                                                                    </label>
-                                                                    <input
-                                                                        type="file"
-                                                                        className="form-control"
-                                                                        name=""
-                                                                        id=""
-                                                                        onChange={(e) => handleImageChange(index, e, setColors)}
+        {/* <div className="col-lg-3 mb-2">
+            <label htmlFor="" className="mb-2">Image</label>
+            <input
+                type="file"
+                className="form-control"
+                onChange={(e) => handleImageChange(index, e, setColors)}
+            />
+        </div>
 
-                                                                    />
-                                                                </div>
+        <div className="col-lg-3 mt-2">
+            {c.image ? (
+                <img
+                    src={c.image.preview}
+                    alt={`Preview for gallery item ${index + 1}`}
+                    style={{ width: '100%', height: '100px', objectFit: 'cover', borderRadius: 5 }}
+                />
+            ) : (
+                <img
+                    src="https://developers.elementor.com/docs/assets/img/elementor-placeholder-image.png"
+                    alt={`Preview for gallery item ${index + 1}`}
+                    style={{ width: '100%', height: '100px', objectFit: 'cover', borderRadius: 5 }}
+                />
+            )}
+        </div> */}
 
-                                                                <div className="col-lg-3 mt-2">
-                                                                    {c.image && (
-                                                                        <img
-                                                                            src={c.image.preview}
-                                                                            alt={`Preview for gallery item ${index + 1}`}
-                                                                            style={{ width: '100%', height: '100px', objectFit: 'cover', borderRadius: 5 }}
-                                                                        />
-                                                                    )}
-                                                                    {!c.image && (
-                                                                        <img
-                                                                            src="https://developers.elementor.com/docs/assets/img/elementor-placeholder-image.png"
-                                                                            alt={`Preview for gallery item ${index + 1}`}
-                                                                            style={{ width: '100%', height: '100px', objectFit: 'cover', borderRadius: 5 }}
-                                                                        />
-                                                                    )}
-                                                                </div>
+        <div className="col-lg-2 mt-2">
+            <button
+                type="button"
+                onClick={() => handleRemove(index, setColors)}
+                className="btn btn-danger mt-4"
+            >
+                Supprimer
+            </button>
+        </div>
+    </div>
+))}
 
-                                                                <div className="col-lg-2 mt-2">
-                                                                    <button type='button' onClick={() => handleRemove(index, setColors)} className='btn btn-danger mt-4'>Remove</button>
-                                                                </div>
-
-                                                            </div>
-                                                        ))}
 
                                                         {colors < 1 &&
                                                             <h4>No Colors Added</h4>
@@ -686,7 +701,7 @@ function AddProduct() {
                                                     aria-controls="pills-home"
                                                     aria-selected="true"
                                                 >
-                                                    Basic Information
+                                                    Informations Basiques
                                                 </button>
                                             </li>
                                             <li className="nav-item" role="presentation">
@@ -700,7 +715,7 @@ function AddProduct() {
                                                     aria-controls="pills-profile"
                                                     aria-selected="false"
                                                 >
-                                                    Gallery
+                                                    Gallerie
                                                 </button>
                                             </li>
                                             <li className="nav-item" role="presentation">
@@ -728,7 +743,7 @@ function AddProduct() {
                                                     aria-controls="pills-size"
                                                     aria-selected="false"
                                                 >
-                                                    Size
+                                                    Taille
                                                 </button>
                                             </li>
                                             <li className="nav-item" role="presentation">
@@ -742,14 +757,14 @@ function AddProduct() {
                                                     aria-controls="pills-color"
                                                     aria-selected="false"
                                                 >
-                                                    Color
+                                                    Couleur
                                                 </button>
                                             </li>
                                         </ul>
                                         <div className="d-flex justify-content-center mb-5">
                                             {isLoading === false &&
                                                 <button type='submit' className="btn btn-success w-50">
-                                                    Create Product <i className="fa fa-check-circle" />{" "}
+                                                    Créer le produit <i className="fa fa-check-circle" />{" "}
                                                 </button>
                                             }
 

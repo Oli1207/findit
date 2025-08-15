@@ -8,13 +8,23 @@ const InstallButton = () => {
     const handler = (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      setIsVisible(true); // Affiche le bouton
+      if (!localStorage.getItem('pwa_installed')) {
+        setIsVisible(true);
+      }
+    };
+
+    const appInstalledHandler = () => {
+      setDeferredPrompt(null);
+      setIsVisible(false);
+      localStorage.setItem('pwa_installed', 'true');
     };
 
     window.addEventListener("beforeinstallprompt", handler);
+    window.addEventListener("appinstalled", appInstalledHandler);
 
     return () => {
       window.removeEventListener("beforeinstallprompt", handler);
+      window.removeEventListener("appinstalled", appInstalledHandler);
     };
   }, []);
 
@@ -26,9 +36,10 @@ const InstallButton = () => {
     const { outcome } = await deferredPrompt.userChoice;
     console.log("User response to the install prompt:", outcome);
 
-    // Cache l'invite une fois utilisée
-    setDeferredPrompt(null);
-    setIsVisible(false);
+    if (outcome === 'accepted') {
+      localStorage.setItem('pwa_installed', 'true');
+      setIsVisible(false);
+    }
   };
 
   if (!isVisible) return null;

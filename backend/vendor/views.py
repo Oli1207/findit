@@ -236,3 +236,26 @@ class OrderDetailAPIView(generics.RetrieveAPIView):
             vendor=vendor, oid=order_oid)
         return order
 
+class VendorPresentationsAPIView(APIView):
+    permission_classes = [AllowAny]  # ou AllowAny si pas besoin d'auth
+
+    def get(self, request, vendor_id):
+        try:
+            vendor = Vendor.objects.get(id=vendor_id)
+            presentations = Presentation.objects.filter(vendor=vendor)
+            serializer = PresentationSerializer(presentations, many=True, context={'request': request})
+            return Response({"presentations": serializer.data})
+        except Vendor.DoesNotExist:
+            return Response({"error": "Vendeur non trouvé"}, status=404)
+
+class VendorProductsAPIView(APIView):
+    permission_classes = [AllowAny]  # ou AllowAny si pas besoin d'auth
+
+    def get(self, request, vendor_id):
+        try:
+            vendor = Vendor.objects.get(id=vendor_id)
+            products = Product.objects.filter(vendor=vendor)
+            serializer = ProductSerializer(products, many=True, context={'request': request})
+            return Response({"products": serializer.data})
+        except Vendor.DoesNotExist:
+            return Response({"error": "Vendeur non trouvé"}, status=404)

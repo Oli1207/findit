@@ -9,9 +9,11 @@ import informationIcon from "../../assets/information.png";
 import { useMediaQuery } from "react-responsive";
 import Review from "./Review";
 import "./tiktokfeed.css";
-
+import "./search.css"
+import { useSwipeable } from "react-swipeable";
 import { useFollowStore } from "../../store/useFollowStore";
 import { syncOrdersIfOnline } from "./OrderQueue";
+import BottomBar from "./BottomBar";
 
 const Toast = Swal.mixin({
   toast: true,
@@ -22,7 +24,7 @@ const Toast = Swal.mixin({
 });
 
 function Search() {
-   const axios = apiInstance;
+  const axios = apiInstance;
   const [profileData, setProfileData] = useState(null);
   const [products, setProducts] = useState([]);
   const [selectedColors, setSelectedColors] = useState({});
@@ -31,11 +33,13 @@ function Search() {
   const [colorValue, setColorValue] = useState("No Color");
   const [sizeValue, setSizeValue] = useState("No Size");
   const [qtyValue, setQtyValue] = useState(1);
-const [searchInput, setSearchInput] = useState("");
+  const [searchInput, setSearchInput] = useState("");
 
   const [orderProduct, setOrderProduct] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [showCategoriesOnly, setShowCategoriesOnly] = useState(true);
 
+  const [selectedIndex, setSelectedIndex] = useState({});
   const [useProfileAddress, setUseProfileAddress] = useState(true);
   const [customAddress, setCustomAddress] = useState({
     mobile: "",
@@ -48,7 +52,7 @@ const [searchInput, setSearchInput] = useState("");
   const currentAddress = GetCurrentAddress();
   const userData = UserData();
   const cart_id = CardID();
-const navigate = useNavigate();
+  const navigate = useNavigate();
   const [specificationStates, setSpecificationStates] = useState({});
 
   const toggleSpecifications = (productId) => {
@@ -57,8 +61,6 @@ const navigate = useNavigate();
       [productId]: !prev[productId], // Toggle specification visibility for specific product
     }));
   };
-
- 
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -76,21 +78,45 @@ const navigate = useNavigate();
     fetchProfile();
   }, [userData?.user_id]);
 
-const handleSearchChange = (e) => {
-  setSearchInput(e.target.value);
-};
+  const handleSearchChange = (e) => {
+    setSearchInput(e.target.value);
+  };
 
-const handleSearchSubmit = async () => {
+  useEffect(() => {
+    if (!searchInput || searchInput.trim() === "") {
+      setShowCategoriesOnly(true);
+    }
+  }, []);
+
+const handleCategoryClick = async (categoryId) => {
+  setShowCategoriesOnly(false); // On passe en mode produits
   try {
-    const response = await apiInstance.get(`search/?query=${searchInput}`);
-    setProducts(response.data);
-    const vendorIds = response.data.map((p) => p.vendor?.id).filter((id) => id);
-    fetchFollowStates(vendorIds, userData?.user_id);
+    const { data } = await apiInstance.get(`category/${categoryId}/`);
+    setProducts(data); // on alimente la feed-container avec les produits de cette catégorie
   } catch (error) {
-    console.error("Erreur lors de la recherche :", error);
+    console.error("Erreur lors de la récupération des produits :", error);
   }
 };
 
+  const handleSearchSubmit = async (e) => {
+  if (!searchInput || searchInput.trim() === "") {
+    setShowCategoriesOnly(true);
+    return; // si vide, on ne fait pas de recherche
+  } else {
+    setShowCategoriesOnly(false);
+  }
+
+    try {
+      const response = await apiInstance.get(`search/?query=${searchInput}`);
+      setProducts(response.data);
+      const vendorIds = response.data
+        .map((p) => p.vendor?.id)
+        .filter((id) => id);
+      fetchFollowStates(vendorIds, userData?.user_id);
+    } catch (error) {
+      console.error("Erreur lors de la recherche :", error);
+    }
+  };
 
   // useEffect(() => {
   //   apiInstance.get(`search/?query=${query}`).then((response) => {
@@ -226,6 +252,21 @@ const handleSearchSubmit = async () => {
     window.open(product.url, "_blank");
   };
 
+  const handlers = useSwipeable({
+    onSwipedLeft: () => {
+      setSelectedIndex((prev) => ({
+        ...prev,
+        [item.id]: Math.min((prev[item.id] || 0) + 1, totalImages - 1),
+      }));
+    },
+    onSwipedRight: () => {
+      setSelectedIndex((prev) => ({
+        ...prev,
+        [item.id]: Math.max((prev[item.id] || 0) - 1, 0),
+      }));
+    },
+    trackMouse: true,
+  });
   const handleCopyLink = (product) => {
     const url = `${window.location.origin}/detail/${product.slug}`;
     navigator.clipboard
@@ -250,424 +291,596 @@ const handleSearchSubmit = async () => {
         syncOrdersIfOnline();
       }
     };
-  
-    window.addEventListener('online', syncOnReconnect);
+
+    window.addEventListener("online", syncOnReconnect);
     syncOnReconnect(); // tentative immédiate si connecté
-  
+
     return () => {
-      window.removeEventListener('online', syncOnReconnect);
+      window.removeEventListener("online", syncOnReconnect);
     };
   }, []);
   return (
-  
-      <div className="app-container">
-        <div className="top-bar">
-  <div className="tabs">
-    <Link to="/haul" className="text-decoration-none text-white">
-      <span>Haul</span>
-    </Link>
-    <Link to="/suivis" className="text-decoration-none text-white">
-      <span>Suivis</span>
-    </Link>
-    <span className="active">Accueil</span>
-  </div>
-  <div className="search-icon">
-    <form
-      className="d-flex justify-content-center"
-      onSubmit={(e) => {
-        e.preventDefault();
-        handleSearchSubmit();
-      }}
-      style={{ flexGrow: 1 }}
-    >
-      <input
-        className="form-control me-2"
-        type="text"
-        placeholder="chemise, jean..."
-        value={searchInput}
-        onChange={handleSearchChange}
-        style={{ maxWidth: "600px", width: "100%" }}
-      />
-      <button
-        type="submit"
-        className="btn btn-outline-success me-2"
-      >
-        <i className="fas fa-search"></i>
-      </button>
-    </form>
-  </div>
+    <div className="app-container">
+     <div className="top-bar-search">
+  <form
+    className="search-form-search"
+    onSubmit={(e) => {
+      e.preventDefault();
+      handleSearchSubmit();
+    }}
+  >
+    <input
+      className="form-control"
+      type="text"
+      placeholder="chemise, jean..."
+      value={searchInput}
+      onChange={handleSearchChange}
+    />
+    <button type="submit" className="btn btn-outline-success">
+      <i className="fas fa-search"></i>
+    </button>
+  </form>
 </div>
 
-          
-            <div className="feed-container">
-              {products.map((product) => (
-                <div className="feed-item" key={product.id}>
-                  <img
-                    src={product.image}
-                    alt={product.title}
-                    className="feed-image"
-                  />
-                  <div className="overlay"></div>
-                  <div className="info">
-                    {product.vendor?.user !== userData?.user_id && (
-                      <>
-                        <button
-                          onClick={() =>
-                            handleStartConversation(product.vendor?.id)
-                          }
-                        >
-                          {product.vendor?.name}
-                        </button>
-                        <button
-                          onClick={() =>
-                            toggleFollow(userData?.user_id, product.vendor?.id)
-                          }
-                        >
-                          {followStates[product.vendor?.id]
-                            ? "Arrêter de suivre"
-                            : "S’abonner"}
-                        </button>
-                        <Link
-                          to={`/customer/${product.vendor?.slug}/`}
-                          style={{ backgroundColor: "gray" }}
-                          className="btn ms-2"
-                          type="submit"
-                        >
-                          View Shop <i className="fas fa-shop" />{" "}
-                        </Link>
-                      </>
-                    )}
-                    {product.vendor?.user === userData?.user_id && (
-                      <>
-                        {product.vendor?.name}
-                        <Link
-                          to={`/vendor/${product.vendor?.slug}/`}
-                          style={{ backgroundColor: "gray" }}
-                          className="btn ms-2"
-                          type="submit"
-                        >
-                          View Shop <i className="fas fa-shop" />{" "}
-                        </Link>
-                      </>
-                    )}
-                    <h2 style={{color:'white'}}>{product.title}</h2>
 
-                    <p>{product.category?.title}</p>
-                    <div className="specifications mt-2">
-                      {product.specification &&
-                        product.specification.length > 0 && (
-                          <>
-                            <button
-                              className="btn btn-link text-white p-0"
-                              onClick={() => toggleSpecification(product.id)}
-                            >
-                              <i className="fas fa-info-circle me-2"></i>
-                              Spécifications
-                            </button>
+      
+        {showCategoriesOnly ? (
+          <div className="feed-container"> 
+          <div className="categories-fullscreen">
+            {category?.map((c, index) => (
+            
+              <div
+                key={index}
+                className="category-card"
+                onClick={() => handleCategoryClick(c.id)}
+              >
+                <img src={c.image} alt={c.title} />
+                <h3>{c.title}</h3>
+              
+              </div>
+            ))}
+            </div>
+          </div>
+        ) : (
+          <div className="feed-container">
+            {products.map((item, index) => (
+              <div
+                className="feed-item"
+                data-id={`${item.type}-${item.id}`}
+                key={`${item.type}-${item.id}`}
+              >
+                {/* Si c'est un produit */}
+                {item.type === "product" ? (
+                  <>
+                    <div className="feed-image">
+                      <div
+                        {...handlers}
+                        className="feed-slider"
+                        style={{
+                          display: "flex",
+                          transform: `translateX(-${
+                            (selectedIndex[item.id] || 0) * 100
+                          }%)`,
+                          transition: "transform 0.3s ease",
+                          width: "100%",
+                          height: "100%",
+                        }}
+                      >
+                        {[item.image, ...(item.gallery || [])].map(
+                          (img, imgIndex) => (
+                            <img
+                              key={imgIndex}
+                              src={img}
+                              className="feed-slide-image"
+                              alt={item.title}
+                              style={{
+                                minWidth: "100%",
+                                height: "100%",
+                                objectFit: "cover",
+                              }}
+                            />
+                          )
+                        )}
+                      </div>
 
-                            {specificationStates[product.id] && (
-                              <div
-                                className="text-white mt-2 small"
+                      {/* Points de navigation */}
+                      <div
+                        className="feed-dots"
+                        style={{
+                          position: "absolute",
+                          bottom: "10px",
+                          left: "50%",
+                          transform: "translateX(-50%)",
+                          display: "flex",
+                          gap: "5px",
+                          zIndex: "10",
+                        }}
+                      >
+                        {[item.image, ...(item.gallery || [])].map(
+                          (_, imgIndex) => (
+                            <span
+                              key={imgIndex}
+                              className={`feed-dot ${
+                                (selectedIndex[item.id] || 0) === imgIndex
+                                  ? "active"
+                                  : ""
+                              }`}
+                              onClick={() =>
+                                setSelectedIndex((prev) => ({
+                                  ...prev,
+                                  [item.id]: imgIndex,
+                                }))
+                              }
+                              style={{
+                                width: "8px",
+                                height: "8px",
+                                borderRadius: "50%",
+                                background:
+                                  (selectedIndex[item.id] || 0) === imgIndex
+                                    ? "white"
+                                    : "rgba(255,255,255,0.5)",
+                                cursor: "pointer",
+                              }}
+                            />
+                          )
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="info">
+                      <Link
+                        to={
+                          item.vendor?.user === userData?.user_id
+                            ? `/vendor/${item.vendor?.slug}/`
+                            : `/customer/${item.vendor?.slug}/`
+                        }
+                        style={{ fontWeight: "bold", fontSize: "15px" }}
+                        className="ms-2"
+                      >
+                        {item.vendor?.name}
+                      </Link>
+
+                      <h2>
+                        <Link to={`/detail/${item.slug}`}>{item.title}</Link>
+                      </h2>
+                      <p style={{ color: "white" }}>{item.description}</p>
+                      <p
+                        style={{
+                          fontSize: "15px",
+                          fontWeight: "500",
+                          color: "#DF468F",
+                        }}
+                      >
+                        {item.price} frs
+                      </p>
+                      <p>{item?.category?.title}</p>
+
+                      {/* Spécifications */}
+                      <div className="specifications mt-2">
+                        {item.specification &&
+                          item.specification.length > 0 && (
+                            <>
+                              <p
+                                onClick={() => toggleSpecification(item.id)}
                                 style={{
-                                  maxHeight: "200px",
-                                  overflowY: "auto",
+                                  cursor: "pointer",
+                                  color: "#ffffff",
+                                  fontSize: "14px",
+                                  margin: 0,
+                                  display: "flex",
+                                  alignItems: "center",
                                 }}
                               >
-                                {product.specification
-                                  .slice(
-                                    0,
-                                    specificationStates[product.id]
-                                      ? product.specification.length
-                                      : 3
-                                  )
-                                  .map((spec, index) => (
-                                    <div key={index} className="mb-1">
-                                      <strong>{spec.title}:</strong>{" "}
-                                      {spec.content}
-                                    </div>
-                                  ))}
+                                <i className="fas fa-info-circle me-2" />
+                                Spécifications
+                              </p>
 
-                                {product.specification.length > 3 && (
-                                  <button
-                                    className="btn btn-sm btn-link text-white p-0"
-                                    onClick={() =>
-                                      toggleSpecification(product.id)
-                                    }
-                                  >
-                                    {specificationStates[product.id]
-                                      ? "Voir moins"
-                                      : "Voir plus"}
-                                  </button>
-                                )}
-                              </div>
-                            )}
-                          </>
-                        )}
-                    </div>
-                  </div>
-                  <div className="actions">
-                    <div className="action-btn">
-                      <i className="fas fa-star" />{" "}
-                      <span>
-                        {product.rating ? product.rating.toFixed(1) : "0.0"}
-                      </span>
-                    </div>
-                    <div
-                      className="action-btn"
-                      onClick={() => handleReviewIconClick(product)}
-                    >
-                      <i className="fas fa-comment-dots"></i>{" "}
-                      <span>{product.rating_count || 0}</span>
-                    </div>
-                    <div
-                      className="action-btn"
-                      onClick={() => handleOrderClick(product)}
-                    >
-                      <i className="fas fa-shopping-cart"></i>
-                    </div>
-                    <div
-                      className="action-btn"
-                      onClick={() => handleCopyLink(product)}
-                    >
-                      <i className="fas fa-link"></i>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            {selectedProduct && (
-              <div className="review-overlay">
-                <div className="review-panel">
-                  <button className="btn-close" onClick={handleCloseReview}>
-                    &times;
-                  </button>
-                  <Review product={selectedProduct} userData={userData} />
-                </div>
-              </div>
-            )}
-            {orderProduct && (
-              <div className="review-overlay">
-                <div className="review-panel">
-                  <button className="btn-close" onClick={handleCloseOrder}>
-                    &times;
-                  </button>
-                  <h4 className="mb-3">{orderProduct.title}</h4>
-                  {/* Variations */}
-                  <div className="mb-3">
-                    <label>
-                      <b>Quantité :</b>
-                    </label>
-                    <input
-                      type="number"
-                      className="form-control"
-                      value={qtyValue}
-                      min="1"
-                      onChange={handleQtyChange}
-                    />
-                  </div>
-                  {orderProduct.size?.length > 0 && (
-                    <div className="mb-3">
-                      <label>
-                        <b>Taille :</b>
-                      </label>
-                      <div className="d-flex flex-wrap gap-2">
-                        {orderProduct.size.map((size, index) => (
-                          <button
-                            key={index}
-                            onClick={() =>
-                              handleSizeButtonClick(orderProduct.id, size.name)
-                            }
-                            className="btn btn-outline-primary btn-sm"
-                          >
-                            {size.name}
-                          </button>
-                        ))}
+                              {specificationStates[item.id] && (
+                                <div
+                                  className="text-white mt-2 small"
+                                  style={{
+                                    maxHeight: "200px",
+                                    overflowY: "auto",
+                                  }}
+                                >
+                                  {item.specification
+                                    .slice(0, 3)
+                                    .map((spec, index) => (
+                                      <div key={index} className="mb-1">
+                                        <strong>{spec.title}:</strong>{" "}
+                                        {spec.content}
+                                      </div>
+                                    ))}
+                                </div>
+                              )}
+                            </>
+                          )}
                       </div>
                     </div>
-                  )}
-                  {orderProduct.color?.length > 0 && (
-                    <div className="mb-3">
-                      <label>
-                        <b>Couleur :</b>
-                      </label>
-                      <div className="d-flex flex-wrap gap-2">
-                        {orderProduct.color.map((color, index) => (
-                          <button
-                            key={index}
-                            className="btn btn-sm p-3"
-                            style={{ backgroundColor: `${color.color_code}` }}
-                            onClick={() =>
-                              handleColorButtonClick(
-                                orderProduct.id,
-                                color.name
-                              )
-                            }
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {/* Utiliser mon adresse */}
-                  {profileData?.mobile &&
-                  profileData?.address &&
-                  profileData?.city ? (
-                    <div className="form-check my-3">
-                      <input
-                        className="form-check-input"
-                        type="checkbox"
-                        id="useProfileAddress"
-                        checked={useProfileAddress}
-                        onChange={(e) => setUseProfileAddress(e.target.checked)}
-                      />
-                      <label
-                        className="form-check-label"
-                        htmlFor="useProfileAddress"
+
+                    {/* Actions */}
+                    <div className="actions">
+                      <Link
+                        to={
+                          item.vendor?.user === userData?.user_id
+                            ? `/vendor/${item.vendor?.slug}/`
+                            : `/customer/${item.vendor?.slug}/`
+                        }
                       >
-                        Utiliser mon adresse enregistrée
-                      </label>
+                        <img
+                          src={item.vendor?.image}
+                          className="rounded-circle"
+                          alt={item.vendor?.name}
+                          style={{
+                            height: "40px",
+                            width: "50px",
+                            objectFit: "cover",
+                            margin: "10px",
+                          }}
+                        />
+                      </Link>
+
+                      {item.vendor?.user !== userData?.user_id && (
+                        <span
+                          onClick={() =>
+                            toggleFollow(userData?.user_id, item.vendor?.id)
+                          }
+                          style={{
+                            cursor: "pointer",
+                            padding: "4px 10px",
+                            borderRadius: "15px",
+                            backgroundColor: followStates[item.vendor?.id]
+                              ? "#e0e0e0"
+                              : "#007bff",
+                            color: followStates[item.vendor?.id]
+                              ? "#333"
+                              : "#fff",
+                            fontSize: "12px",
+                            fontWeight: 500,
+                            marginLeft: "10px",
+                          }}
+                        >
+                          {followStates[item.vendor?.id] ? (
+                            ""
+                          ) : (
+                            <i className="fas fa-plus" />
+                          )}
+                        </span>
+                      )}
+
+                      <div className="action-btn">
+                        <i className="fas fa-star" />
+                        <span>
+                          {item.rating ? item.rating.toFixed(1) : "0.0"}
+                        </span>
+                      </div>
+                      <div
+                        className="action-btn"
+                        onClick={() => handleReviewIconClick(item)}
+                      >
+                        <i className="fas fa-comment-dots" />
+                        <span>{item.rating_count || 0}</span>
+                      </div>
+                      <div
+                        className="action-btn"
+                        onClick={() => handleOrderClick(item)}
+                      >
+                        <i className="fas fa-shopping-cart" />
+                      </div>
+                      <div
+                        className="action-btn"
+                        onClick={() => handleCopyLink(item)}
+                      >
+                        <i className="fas fa-link" />
+                      </div>
                     </div>
-                  ) : null}
-                  {/* /* Si décoché ou adresse inexistante → champs personnalisés  */}
-                  {(!useProfileAddress ||
-                    !profileData?.mobile ||
-                    !profileData?.address ||
-                    !profileData?.city) && (
-                    <div>
-                      <div className="mb-2">
-                        <label>Téléphone</label>
-                        <input
-                          className="form-control"
-                          value={customAddress.mobile}
-                          onChange={(e) =>
-                            setCustomAddress({
-                              ...customAddress,
-                              mobile: e.target.value,
-                            })
-                          }
-                          type="text"
-                        />
+                  </>
+                ) : (
+                  // Si c’est une présentation vidéo
+                  <div
+                    className="feed-item"
+                    data-id={`${item.type}-${item.id}`}
+                    key={`${item.type}-${item.id}`}
+                  >
+                    <video
+                      ref={(el) => setVideoRef(el, index)}
+                      autoPlay
+                      src={item.video}
+                      className="feed-image"
+                      muted
+                      loop
+                      playsInline
+                      onClick={(e) => {
+                        const video = e.target;
+                        if (video.paused) {
+                          video.play();
+                        } else {
+                          video.pause();
+                        }
+                      }}
+                      style={{ cursor: "pointer" }}
+                    />
+
+                    <div className="overlay"></div>
+
+                    <div className="info">
+                      <h3
+                        style={{
+                          textShadow: "0 0 9px rgba(0, 0, 0, 0.6)",
+                          color: "white",
+                        }}
+                      >
+                        {item.vendor?.name}
+                      </h3>
+                      <h2
+                        style={{
+                          textShadow: "0 0 9px rgba(0, 0, 0, 0.6)",
+                          color: "white",
+                        }}
+                      >
+                        {item.title}
+                      </h2>
+                      <p
+                        style={{
+                          textShadow: "0 0 9px rgba(0, 0, 0, 0.6)",
+                          color: "white",
+                        }}
+                      >
+                        {item.description}
+                      </p>
+                      {item.link && (
+                        <a href={item.link} target="_blank" rel="noreferrer">
+                          {item.link}
+                        </a>
+                      )}
+                    </div>
+
+                    <div className="actions">
+                      <div
+                        style={{ textShadow: "0 0 4px rgba(0, 0, 0, 0.6)" }}
+                        className="action-btn"
+                        onClick={() => handleLike(item.id)}
+                      >
+                        <i className="fas fa-heart" /> {item.likes_count}
                       </div>
-                      <div className="mb-2">
-                        <label>Adresse</label>
-                        <input
-                          className="form-control"
-                          value={customAddress.address}
-                          onChange={(e) =>
-                            setCustomAddress({
-                              ...customAddress,
-                              address: e.target.value,
-                            })
-                          }
-                          type="text"
-                        />
+                      <div
+                        style={{ textShadow: "0 0 4px rgba(0, 0, 0, 0.6)" }}
+                        className="action-btn"
+                        onClick={() => handleCommentIconClick(item)}
+                      >
+                        <i className="fas fa-comment-dots"></i>{" "}
+                        <span>{item.comments?.length || 0}</span>
                       </div>
-                      <div className="mb-2">
-                        <label>Ville</label>
-                        <input
-                          className="form-control"
-                          value={customAddress.city}
-                          onChange={(e) =>
-                            setCustomAddress({
-                              ...customAddress,
-                              city: e.target.value,
-                            })
-                          }
-                          type="text"
-                        />
+                      <div
+                        style={{ textShadow: "0 0 4px rgba(0, 0, 0, 0.6)" }}
+                        className="action-btn"
+                        onClick={() => copyLink(item.id)}
+                      >
+                        <i className="fas fa-link" />
                       </div>
                     </div>
-                  )}
-                  {/* Boutons actions */}
-                  <button
-                    className="btn btn-primary w-100 my-2"
-                    onClick={() =>
-                      handlePlaceOrder(
-                        orderProduct.id,
-                        orderProduct.price,
-                        orderProduct.vendor?.id
-                      )
-                    }
-                  >
-                    <i className="fas fa-shopping-cart me-2" />
-                    Commander
-                  </button>
-                  <button
-                    className="btn btn-outline-danger w-100"
-                    onClick={() => addToWishList(orderProduct.id)}
-                  >
-                    <i className="fas fa-heart me-2" />
-                    Ajouter en wishlist
-                  </button>
+                  </div>
+                )}
+                
+              </div>
+            ))}
+
+          </div>
+        )}
+      {!showCategoriesOnly && products < 1 && (
+        <div className="feed-container">
+        <h5 style={{marginTop:"30px", fontSize: "16px"}} className="p-3">Aucun produit trouvé</h5>
+        </div>
+      )}
+      {selectedProduct && (
+        <div className="review-overlay">
+          <div className="review-panel">
+            <button className="btn-close" onClick={handleCloseReview}>
+              &times;
+            </button>
+            <Review product={selectedProduct} userData={userData} />
+          </div>
+        </div>
+      )}
+      {orderProduct && (
+        <div className="review-overlay">
+          <div className="review-panel">
+            <button className="btn-close" onClick={handleCloseOrder}>
+              &times;
+            </button>
+            <h4 className="mb-3">{orderProduct.title}</h4>
+            {/* Variations */}
+            <div className="mb-3">
+              <label>
+                <b>Quantité :</b>
+              </label>
+              <input
+                type="number"
+                className="form-control"
+                value={qtyValue}
+                min="1"
+                onChange={handleQtyChange}
+              />
+            </div>
+            {orderProduct.size?.length > 0 && (
+              <div className="mb-3">
+                <label>
+                  <b>Taille :</b>
+                </label>
+                <div className="d-flex flex-wrap gap-2">
+                  {orderProduct.size.map((size, index) => (
+                    <button
+                      key={index}
+                      onClick={() =>
+                        handleSizeButtonClick(orderProduct.id, size.name)
+                      }
+                      className="btn btn-outline-primary btn-sm"
+                    >
+                      {size.name}
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
-             <div
-  className="bottom-bar"
-  style={{
-    position: "fixed",
-    bottom: 0,
-    width: "100%",
-    height: "100px",
-    background: "rgba(0,0,0,0.7)",
-    display: "flex",
-    overflowX: "auto",
-    padding: "10px 15px",
-    gap: "20px",
-    alignItems: "center",
-    zIndex: 10,
-  }}
->
-  {category?.map((c, index) => (
-    <div
-      key={index}
-      style={{
-        flex: "0 0 auto",
-        textAlign: "center",
-        color: "white",
-      }}
-    >
-      <Link
-        to={`/category/${c.id}`} // ou autre route logique
-        className="text-decoration-none text-white"
-      >
-        <img
-          src={c.image}
-          alt={c.title}
-          style={{
-            width: "70px",
-            height: "70px",
-            borderRadius: "50%",
-            objectFit: "cover",
-            marginBottom: "5px",
-          }}
-        />
-        <h6 style={{ fontSize: "12px", color:'white' }}>{c.title}</h6>
-      </Link>
-    </div>
-  ))}
-</div>
-
-            {/* <div className="row">
-              {category?.map((c, index) => (
-                <div className="col-lg-2" key={index}>
-                  <img
-                    src={c.image}
-                    style={{
-                      width: "100px",
-                      height: "100px",
-                      borderRadius: "50%",
-                      objectFit: "cover",
-                    }}
-                    alt="Category"
-                  />
-                  <h6>{c.title}</h6>
+            {orderProduct.color?.length > 0 && (
+              <div className="mb-3">
+                <label>
+                  <b>Couleur :</b>
+                </label>
+                <div className="d-flex flex-wrap gap-2">
+                  {orderProduct.color.map((color, index) => (
+                    <button
+                      key={index}
+                      className="btn btn-sm p-3"
+                      style={{ backgroundColor: `${color.color_code}` }}
+                      onClick={() =>
+                        handleColorButtonClick(orderProduct.id, color.name)
+                      }
+                    />
+                  ))}
                 </div>
-              ))} 
-            </div>*/}
-          
-      
-      </div>
-    
+              </div>
+            )}
+            {/* Utiliser mon adresse */}
+            {profileData?.mobile &&
+            profileData?.address &&
+            profileData?.city ? (
+              <div className="form-check my-3">
+                <input
+                  className="form-check-input"
+                  type="checkbox"
+                  id="useProfileAddress"
+                  checked={useProfileAddress}
+                  onChange={(e) => setUseProfileAddress(e.target.checked)}
+                />
+                <label className="form-check-label" htmlFor="useProfileAddress">
+                  Utiliser mon adresse enregistrée
+                </label>
+              </div>
+            ) : null}
+            {/* /* Si décoché ou adresse inexistante → champs personnalisés  */}
+            {(!useProfileAddress ||
+              !profileData?.mobile ||
+              !profileData?.address ||
+              !profileData?.city) && (
+              <div>
+                <div className="mb-2">
+                  <label>Téléphone</label>
+                  <input
+                    className="form-control"
+                    value={customAddress.mobile}
+                    onChange={(e) =>
+                      setCustomAddress({
+                        ...customAddress,
+                        mobile: e.target.value,
+                      })
+                    }
+                    type="text"
+                  />
+                </div>
+                <div className="mb-2">
+                  <label>Adresse</label>
+                  <input
+                    className="form-control"
+                    value={customAddress.address}
+                    onChange={(e) =>
+                      setCustomAddress({
+                        ...customAddress,
+                        address: e.target.value,
+                      })
+                    }
+                    type="text"
+                  />
+                </div>
+                <div className="mb-2">
+                  <label>Ville</label>
+                  <input
+                    className="form-control"
+                    value={customAddress.city}
+                    onChange={(e) =>
+                      setCustomAddress({
+                        ...customAddress,
+                        city: e.target.value,
+                      })
+                    }
+                    type="text"
+                  />
+                </div>
+              </div>
+            )}
+            {/* Boutons actions */}
+            <button
+              className="btn btn-primary w-100 my-2"
+              onClick={() =>
+                handlePlaceOrder(
+                  orderProduct.id,
+                  orderProduct.price,
+                  orderProduct.vendor?.id
+                )
+              }
+            >
+              <i className="fas fa-shopping-cart me-2" />
+              Commander
+            </button>
+            <button
+              className="btn btn-outline-danger w-100"
+              onClick={() => addToWishList(orderProduct.id)}
+            >
+              <i className="fas fa-heart me-2" />
+              Ajouter en wishlist
+            </button>
+          </div>
+        </div>
+      )}
+      {/* <div
+        className="bottom-bar"
+        style={{
+          position: "fixed",
+          bottom: 0,
+          width: "100%",
+          height: "100px",
+          background: "rgba(0,0,0,0.7)",
+          display: "flex",
+          overflowX: "auto",
+          padding: "10px 15px",
+          gap: "20px",
+          alignItems: "center",
+          zIndex: 10,
+        }}
+      >
+        {category?.map((c, index) => (
+          <div
+            key={index}
+            style={{
+              flex: "0 0 auto",
+              textAlign: "center",
+              color: "white",
+              marginBottom: "60px",
+            }}
+          >
+            <Link
+              to={`/category/${c.id}`} // ou autre route logique
+              className="text-decoration-none text-white"
+            >
+              <img
+                src={c.image}
+                alt={c.title}
+                style={{
+                  width: "70px",
+                  height: "70px",
+                  borderRadius: "50%",
+                  objectFit: "cover",
+                  marginBottom: "5px",
+                }}
+              />
+              <h6 style={{ fontSize: "12px", color: "white" }}>{c.title}</h6>
+            </Link>
+          </div>
+        ))}
+      </div> */}
+
+      <BottomBar />
+    </div>
   );
 }
 

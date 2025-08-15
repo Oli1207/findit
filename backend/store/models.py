@@ -42,6 +42,7 @@ class Product(models.Model):
     featured = models.BooleanField(default=False)
     views = models.PositiveIntegerField(default=0)
     rating = models.PositiveIntegerField(default=0, null=True, blank=True)
+    solde = models.BooleanField(default=False)
     vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE, blank=True, null=True)
 
     pid = ShortUUIDField(unique=True, length=10, prefix="findit", alphabet="abcdefghijklmnopqrstuvwxyz")

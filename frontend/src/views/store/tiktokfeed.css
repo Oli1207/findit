@@ -1,23 +1,56 @@
 body {
     margin: 0;
     padding: 0;
-    font-family: sans-serif;
+    
+    font-family: 'Inter', 'Segoe UI','Poppins', 'Roboto', sans-serif;
     /* background: black; */
   }
-  
+  a {
+  text-decoration: none !important;
+}
+
+  h2 a {
+  font-family: 'Inter', sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: white;
+  text-decoration: none;
+}
+h5 {
+  font-family: 'Poppins';
+  font-size: 16px;
+  color: #f8f8f8;
+  font-weight: 500;
+  margin-bottom: 5px;
+}
+
+p {
+  font-size: 14px;
+  color: #cfcfcf;
+  margin-bottom: 10px;
+}
+.action-btn i,
+.action-btn span,
+.info h2 a,
+.info p,
+.info span,
+.info a {
+  text-shadow: 0 0 9px rgba(0, 0, 0, 0.6);
+}
   .app-container {
     position: relative;
-    height: 100vh;
-    overflow: hidden;
+    min-height: 100vh;
+    overflow: visible;
   }
   
   /* Top bar */
   .top-bar {
-    position: fixed;
+    position: fixed !important;
+    
     top: 0;
     width: 100%;
     height: 50px;
-    background: rgba(0,0,0,0.7);
+    background: rgba(0,0,0,0.9);
     color: white;
     display: flex;
     align-items: center;
@@ -50,12 +83,12 @@ body {
     bottom: 0;
     width: 100%;
     height: 60px;
-    background: rgba(0,0,0,0.7);
+    background: rgba(0,0,0,0.9);
     color: white;
     display: flex;
     align-items: center;
     justify-content: space-around;
-    z-index: 10;
+    z-index: 20;
   }
   
   .nav-item {
@@ -69,17 +102,21 @@ body {
   
   /* Feed container */
   .feed-container {
-    position: absolute;
-    top: 50px;
-    bottom: 60px;
+     position: absolute; 
+     top: 50px;
+    bottom: 60px; 
     overflow-y: scroll;
     scroll-snap-type: y mandatory;
     width: 100%;
+    /* height: calc(100vh - 110px); */
+    /* scroll-padding-top: 0; */
+     scroll-behavior: smooth; 
+     padding-bottom: 0;
   }
   
   .feed-item {
     position: relative;
-    height: calc(100vh - 110px);
+     height: calc(100vh - 110px);
     width: 100%;
     scroll-snap-align: start;
     display: flex;
@@ -87,6 +124,8 @@ body {
     align-items: flex-end;
     overflow: hidden;
     color: white;
+  /* scroll-snap-stop: always; */
+    
   }
   
   .feed-image {
@@ -94,12 +133,16 @@ body {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    pointer-events: auto !important;
+  z-index: 2;
   }
   
   .overlay {
     position: absolute;
     width: 100%;
     height: 100%;
+    
+    
     /* background: rgba(0,0,0,0.3); */
   }
   
@@ -109,6 +152,7 @@ body {
     z-index: 2;
     padding: 20px;
     max-width: 70%;
+    
   }
   
   .info h3 {
@@ -123,7 +167,7 @@ body {
   
   .actions {
     position: absolute;
-    bottom: 100px;
+    bottom: 30px;
     right: 20px;
     display: flex;
     flex-direction: column;
@@ -138,11 +182,14 @@ body {
     align-items: center;
     font-size: 22px;
     cursor: pointer;
+    
+    color: white;
   }
   
   .action-btn span {
     margin-top: 5px;
     font-size: 14px;
+   
   }
   
   .review-overlay {
@@ -195,7 +242,11 @@ body {
   .specifications strong {
     color: #f2f2f2;
   }
-  
+  .specifications div {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #f2f2f2;
+}
   /* Ajouter ce fix pour iOS Safari ou Chrome */
 /* @supports (-webkit-touch-callout: none) {
   .bottom-bar {
@@ -203,3 +254,142 @@ body {
     padding-bottom: env(safe-area-inset-bottom);
   }
 } */
+.loading-spinner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 80vh;
+}
+.gallery-container {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: auto;
+}
+
+.gallery-slider {
+  display: flex;
+}
+
+.gallery-image {
+  object-fit: cover;
+}
+
+.gallery-dots {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.gallery-dots .dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: white;
+  border-radius: 50%;
+  margin: 0 4px;
+  opacity: 0.5;
+  cursor: pointer;
+}
+
+.gallery-dots .dot.active {
+  opacity: 1;
+}
+
+.feed-image-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.feed-slider {
+  display: flex;
+  transition: transform 0.3s ease;
+}
+
+.feed-slide-image {
+  min-width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.feed-dots {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 5px;
+   z-index: 20; 
+}
+
+.feed-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.5);
+  cursor: pointer;
+}
+
+.feed-dot.active {
+  background: white;
+}
+.slider-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0,0,0,0.5);
+  border: none;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  z-index: 20;
+  padding: 5px 10px;
+  border-radius: 50%;
+  transition: background 0.2s;
+}
+
+.slider-arrow:hover {
+  background: rgba(0,0,0,0.8);
+}
+
+.slider-arrow.left {
+  left: 10px;
+}
+
+.slider-arrow.right {
+  right: 10px;
+}
+.categories-fullscreen {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); 
+  gap: 15px;
+  padding: 20px;
+        margin-top: 80px;
+        
+        /*
+    
+    overflow-y: scroll;
+    scroll-snap-type: y mandatory;
+    width: 100%;
+    height: calc(100vh - 110px); 
+     scroll-padding-top: 0; 
+     scroll-behavior: smooth; 
+     padding-bottom: 0; */
+}
+
+.category-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+}
+
+.category-card img {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+}

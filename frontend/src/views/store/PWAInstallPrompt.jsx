@@ -7,36 +7,50 @@ const PWAInstallPrompt = () => {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isIOS, setIsIOS] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [isInstalled, setIsInstalled] = useState(
+    localStorage.getItem('pwa_installed') === 'true'
+  );
 
   useEffect(() => {
-    // Détection iOS
     const userAgent = window.navigator.userAgent.toLowerCase();
     setIsIOS(/iphone|ipad|ipod/.test(userAgent));
-    setIsStandalone(
+    const standalone =
       window.matchMedia('(display-mode: standalone)').matches ||
-      window.navigator.standalone === true
-    );
+      window.navigator.standalone === true;
+    setIsStandalone(standalone);
 
-    // Android – capturer le beforeinstallprompt
-    const handler = (e) => {
+    if (standalone) {
+      setIsInstalled(true);
+      localStorage.setItem('pwa_installed', 'true');
+    }
+
+    const beforeInstallHandler = (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
     };
 
-    window.addEventListener('beforeinstallprompt', handler);
+    const appInstalledHandler = () => {
+      setIsInstalled(true);
+      setVisible(false);
+      localStorage.setItem('pwa_installed', 'true');
+    };
+
+    window.addEventListener('beforeinstallprompt', beforeInstallHandler);
+    window.addEventListener('appinstalled', appInstalledHandler);
 
     return () => {
-      window.removeEventListener('beforeinstallprompt', handler);
+      window.removeEventListener('beforeinstallprompt', beforeInstallHandler);
+      window.removeEventListener('appinstalled', appInstalledHandler);
     };
   }, []);
 
   useEffect(() => {
-    if (isStandalone) return;
+    if (isInstalled || isStandalone) return;
 
     const timeout = setTimeout(() => {
       setVisible(true);
       setTriggered(true);
-    }, 45000); // ⏱️ après 45s
+    }, 45000);
 
     const onScroll = () => {
       if (!triggered) {
@@ -52,7 +66,7 @@ const PWAInstallPrompt = () => {
       clearTimeout(timeout);
       window.removeEventListener('scroll', onScroll);
     };
-  }, [triggered, isStandalone]);
+  }, [triggered, isInstalled, isStandalone]);
 
   const handleInstallClick = async () => {
     if (deferredPrompt) {
@@ -71,7 +85,7 @@ const PWAInstallPrompt = () => {
     setVisible(false);
   };
 
-  if (!visible || isStandalone) return null;
+  if (!visible || isStandalone || isInstalled) return null;
 
   return (
     <div style={styles.container}>
@@ -82,7 +96,7 @@ const PWAInstallPrompt = () => {
         <button onClick={handleInstallClick} style={styles.install}>
           Ajouter
         </button>
-         <InstallButton/>
+        <InstallButton />
         <button onClick={handleClose} style={styles.close}>
           Fermer
         </button>

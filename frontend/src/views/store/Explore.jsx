@@ -11,7 +11,7 @@ function Explore() {
   const [commentValue, setCommentValue] = useState("");
   const [replyingTo, setReplyingTo] = useState(null);
   const [replyValue, setReplyValue] = useState("");
-
+  const [loading, setLoading] = useState(true);
   const userData = UserData();
   const userId = userData?.user_id;
 
@@ -21,11 +21,13 @@ function Explore() {
 
   const fetchVideos = async () => {
     try {
+      setLoading(true);
       const res = await apiInstance.get("presentations/");
       setVideos(res.data);
     } catch (error) {
       console.error("Erreur chargement vidéos :", error);
     }
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -129,6 +131,13 @@ function Explore() {
     setSelectedPresentation(null);
     setReplyingTo(null);
   };
+if (loading) {
+  return (
+    <div style={{ display:"flex", justifyContent: "center", alignItems: "center", height: "80vh"}} className="loading-spinner">
+      <i style={{color:"#DF468F"}} className="fas fa-spinner fa-spin fa-3x"></i>
+    </div>
+  );
+}
 
   return (
     <div className="app-container">
@@ -166,22 +175,22 @@ function Explore() {
             <div className="overlay"></div>
 
             <div className="info">
-              <h3>{item.vendor.name}</h3>
-              <h2>{item.title}</h2>
-              <p>{item.description}</p>
+              <h3 style={{ textShadow: "0 0 4px rgba(0, 0, 0, 0.6)",}}>{item.vendor.name}</h3>
+              <h2 style={{ textShadow: "0 0 4px rgba(0, 0, 0, 0.6)",}}>{item.title}</h2>
+              <p style={{ textShadow: "0 0 4px rgba(0, 0, 0, 0.6)",}}>{item.description}</p>
               <a href={item.link} target="_blank" rel="noreferrer">
                 {item.link}
               </a>
             </div>
 
             <div className="actions">
-              <div className="action-btn" onClick={() => handleLike(item.id)}>
+              <div style={{ textShadow: "0 0 4px rgba(0, 0, 0, 0.6)",}} className="action-btn" onClick={() => handleLike(item.id)}>
                 <i className="fas fa-heart" /> {item.likes_count}
               </div>
-              <div className="action-btn" onClick={() => handleCommentIconClick(item)}>
+              <div style={{ textShadow: "0 0 4px rgba(0, 0, 0, 0.6)",}} className="action-btn" onClick={() => handleCommentIconClick(item)}>
                 <i className="fas fa-comment-dots"></i>  <span>{item.comments.length}</span>
               </div>
-              <div className="action-btn" onClick={() => copyLink(item.id)}>
+              <div style={{ textShadow: "0 0 4px rgba(0, 0, 0, 0.6)",}} className="action-btn" onClick={() => copyLink(item.id)}>
                 <i className="fas fa-link" />
               </div>
             </div>
@@ -287,6 +296,9 @@ function Explore() {
           </div>
         </div>
       )}
+      {videos < 1 &&
+                                        <h5 style={{marginTop:"300px"}} className='mt-4 p-3'>Pas de vidéo disponible</h5>
+                                    }
     </div>
   );
 }

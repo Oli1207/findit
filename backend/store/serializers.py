@@ -60,6 +60,7 @@ class ProductSerializer(serializers.ModelSerializer):
     size = SizeSerializer(many=True, read_only=True)
     vendor = VendorSerializer(read_only=True)
     url = serializers.SerializerMethodField()
+    type = serializers.SerializerMethodField()
     
 
     class Meta:
@@ -90,12 +91,17 @@ class ProductSerializer(serializers.ModelSerializer):
                    'pid',
                    'slug',
                    'date',
+                   'type',
                    'url',
+                   
                    ]
 
+    def get_type(self, obj):
+        return "product"
     def get_url(self, obj):
         request = self.context.get("request")
         return request.build_absolute_uri(obj.get_absolute_url())
+    
     
     def get_fields(self):
             fields = super().get_fields()

@@ -38,22 +38,24 @@ import CreateNewPassword from './views/auth/CreateNewPassword'
 import { ReloadPrompt } from './Prompt'
 import InstallButton from './InstallButton'
 import PWAInstallPrompt from './views/store/PWAInstallPrompt'
+import Solde from './views/store/Solde'
+import VendorProfile from './views/vendor/VendorProfile'
 
 function App() {
   return (
     <>
-      <ReloadPrompt/>
+      {/* <ReloadPrompt/>
     <InstallButton />
-     <PWAInstallPrompt />
+     <PWAInstallPrompt /> */}
     <BrowserRouter>
       <Routes>
     
         {/* Route spéciale TikTok-like avec VideoLayout */}
-        <Route path="/home" element={
+        {/* <Route path="/home" element={
           <VideoLayout>
             <HomeScreen />
           </VideoLayout>
-        } />
+        } /> */}
 
         {/* Les autres routes dans MainWrapper */}
         <Route path="/" element={<MainWrapper><TikTokFeed /></MainWrapper>} />
@@ -70,7 +72,9 @@ function App() {
         <Route path="/cart/" element={<MainWrapper><Cart /></MainWrapper>} />
         <Route path="/checkout/:order_oid/" element={<MainWrapper><Checkout /></MainWrapper>} />
         <Route path="/payment-success/:order_oid/" element={<MainWrapper><PaymentSuccess /></MainWrapper>} />
-
+           <Route path="/solde/" element={<MainWrapper><Solde /></MainWrapper>} />
+           <Route path="/profile/" element={<MainWrapper><VendorProfile /></MainWrapper>} />
+         
         {/* Routes clients sécurisées */}
         <Route path="/customer/account/" element={<MainWrapper><PrivateRoute><Account /></PrivateRoute></MainWrapper>} />
         <Route path="/customer/orders/" element={<MainWrapper><PrivateRoute><Orders /></PrivateRoute></MainWrapper>} />

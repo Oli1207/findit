@@ -7,6 +7,7 @@ import { useMediaQuery } from "react-responsive";
 import Swal from "sweetalert2";
 import Review from "./Review";
 import "./tiktokfeed.css";
+import BottomBar from "./BottomBar";
 // import star from 'etoile.png'
 
 const FollowedVendorsFeed = () => {
@@ -27,6 +28,7 @@ const FollowedVendorsFeed = () => {
   const [qtyValue, setQtyValue] = useState(1);
   const [specificationStates, setSpecificationStates] = useState({});
   const [useProfileAddress, setUseProfileAddress] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [customAddress, setCustomAddress] = useState({
     mobile: "",
     address: "",
@@ -34,8 +36,8 @@ const FollowedVendorsFeed = () => {
     state: "",
     // country: currentAddress.country,
   });
-  
-    const [followStates, setFollowStates] = useState({});
+
+  const [followStates, setFollowStates] = useState({});
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -60,23 +62,65 @@ const FollowedVendorsFeed = () => {
   };
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const productsResponse = await axios.get(`products/followed/${userData?.user_id}/`);
-        setProducts(productsResponse.data);
-        console.log(productsResponse.data);
-        
-       
+  let page = 1;
+  let hasMore = true;
+  let isFetching = false;
 
-      } catch (error) {
-        console.error("Erreur chargement produits :", error);
-      }
-    };
+  const fetchProducts = async () => {
+    if (!hasMore || isFetching) return;
 
-    fetchProducts();
-  }, []);
+    isFetching = true;
+    setLoading(true);
+    try {
+      const response = await axios.get(
+        `products/followed/${userData?.user_id}/?page=${page}`
+      );
 
-    
+      const data = Array.isArray(response.data)
+        ? response.data
+        : response.data.results || [];
+
+      setProducts((prev) => [...prev, ...data]);
+
+      // S'il y a pagination DRF, vérifier "next"
+      hasMore = Array.isArray(response.data)
+        ? data.length > 0
+        : !!response.data.next;
+
+      page++;
+    } catch (error) {
+      console.error("Erreur chargement produits :", error);
+    } finally {
+      setLoading(false);
+      isFetching = false;
+    }
+  };
+
+  const handleScroll = () => {
+    if (
+      window.innerHeight + window.scrollY >= document.body.offsetHeight - 50 &&
+      !loading &&
+      hasMore
+    ) {
+      fetchProducts();
+    }
+  };
+
+  // Ajout listener scroll
+  window.addEventListener("scroll", handleScroll);
+
+  // Réinitialisation + premier chargement
+  setProducts([]);
+  page = 1;
+  hasMore = true;
+  fetchProducts();
+
+  return () => {
+    window.removeEventListener("scroll", handleScroll);
+  };
+}, [userData?.user_id]);
+
+ 
   const handleFollowToggle = (userId, vendorId) => {
     if (!userId || !vendorId) {
       console.error("User ID or Vendor ID is missing");
@@ -84,54 +128,57 @@ const FollowedVendorsFeed = () => {
     }
     // Créer une instance de FormData
     const formData = new FormData();
-    formData.append('user_id', userId); // Ajouter l'ID de l'utilisateur
-  
+    formData.append("user_id", userId); // Ajouter l'ID de l'utilisateur
+
     // Envoyer une requête POST à l'API
-    axios.post(`toggle-follow/${vendorId}/`, formData)
-      .then(response => {
+    axios
+      .post(`toggle-follow/${vendorId}/`, formData)
+      .then((response) => {
         if (response.data.success) {
           console.log(response.data);
           setFollowStates((prevState) => ({
             ...prevState,
             [vendorId]: response.data.following, // Met à jour l'état pour ce vendeur
           }));
-          
         } else {
-          console.error('Erreur:', response.data.error);
+          console.error("Erreur:", response.data.error);
         }
       })
-      .catch(error => {
-        console.error('Error toggling follow:', error);
+      .catch((error) => {
+        console.error("Error toggling follow:", error);
       });
   };
 
   const handleStartConversation = async (vendorId) => {
     const userId = userData?.user_id; // Exemple de récupération de l'ID utilisateur
     if (!userId) {
-        alert("User ID is missing. Please log in.");
-        return;
+      alert("User ID is missing. Please log in.");
+      return;
     }
 
     if (!vendorId) {
-        alert("Vendor ID is missing.");
-        return;
+      alert("Vendor ID is missing.");
+      return;
     }
 
     try {
-        const response = await apiInstance.post('conversations/', { 
-            user_id: userId,
-            vendor_id: vendorId 
-        });
-        const conversation = response.data;
-        console.log('Conversation started:', conversation);
+      const response = await apiInstance.post("conversations/", {
+        user_id: userId,
+        vendor_id: vendorId,
+      });
+      const conversation = response.data;
+      console.log("Conversation started:", conversation);
 
-        navigate(`/conversation/${conversation.id}`);
-        console.log(conversation.id)
+      navigate(`/conversation/${conversation.id}`);
+      console.log(conversation.id);
     } catch (error) {
-        console.error('Error starting conversation:', error.response?.data || error.message);
-        alert('Unable to start conversation. Please try again.');
+      console.error(
+        "Error starting conversation:",
+        error.response?.data || error.message
+      );
+      alert("Unable to start conversation. Please try again.");
     }
-};
+  };
 
   const handleReviewIconClick = (product) => {
     setSelectedProduct(product);
@@ -196,19 +243,18 @@ const FollowedVendorsFeed = () => {
       formData.append("mobile", customAddress.mobile);
       formData.append("address", customAddress.address);
       formData.append("city", customAddress.city);
-     
+
       // On met à jour le profil en même temps
       const profileForm = new FormData();
       profileForm.append("mobile", customAddress.mobile);
       profileForm.append("address", customAddress.address);
       profileForm.append("city", customAddress.city);
-    
 
       await axios.patch(`user/profile/${userData?.user_id}/`, profileForm);
     }
 
     try {
-      console.log(formData.values)
+      console.log(formData.values);
       const response = await axios.post(`create-order/`, formData);
       Swal.fire({
         icon: "success",
@@ -269,19 +315,24 @@ const FollowedVendorsFeed = () => {
         console.error("Erreur copie lien :", err);
       });
   };
+if (loading) {
+  return (
+    <div className="loading-spinner">
+      <i style={{color:"#DF468F"}} className="fas fa-spinner fa-spin fa-3x"></i>
+    </div>
+  );
+}
 
   return (
     <div className="app-container">
       {/* Top navigation */}
       <div className="top-bar">
         <div className="tabs">
-        <Link to="/haul" className="text-decoration-none text-white">
-          <span>Haul</span>
+          <Link to="/solde" className="text-decoration-none text-white">
+            <span>Solde</span>
           </Link>
           <span className="active">Suivis</span>
-          <Link to="/" className="text-decoration-none text-white">
-          <span >Accueil</span>
-          </Link>
+        
         </div>
         <div className="search-icon">
           <i class="fas fa-search"></i>
@@ -299,25 +350,37 @@ const FollowedVendorsFeed = () => {
             />
             <div className="overlay"></div>
             <div className="info">
-                   {product.vendor?.user !== userData?.user_id && (
-                                <>
-                                  <button onClick={() => handleStartConversation(product.vendor?.id)}>
-                                    {product.vendor?.name}
-                                  </button>
-                                 
-                                  <Link to={`/customer/${product.vendor?.slug}/`}style={{backgroundColor:'gray'}} className="btn ms-2" type="submit">
-                                                                View Shop <i className="fas fa-shop" />{" "}
-                                                              </Link>
-                                </>
-                              )}
-                                {product.vendor?.user === userData?.user_id && (
-                                                <>
-                                                      {product.vendor?.name}
-                                                        <Link to={`/vendor/${product.vendor?.slug}/`} style={{backgroundColor:'gray'}}  className="btn ms-2" type="submit">
-                                                                                        View Shop <i className="fas fa-shop" />{" "}
-                                                                                      </Link>
-                                                </>
-                                              )}
+              {product.vendor?.user !== userData?.user_id && (
+                <>
+                  <button
+                    onClick={() => handleStartConversation(product.vendor?.id)}
+                  >
+                    {product.vendor?.name}
+                  </button>
+
+                  <Link
+                    to={`/customer/${product.vendor?.slug}/`}
+                    style={{ backgroundColor: "gray" }}
+                    className="btn ms-2"
+                    type="submit"
+                  >
+                    View Shop <i className="fas fa-shop" />{" "}
+                  </Link>
+                </>
+              )}
+              {product.vendor?.user === userData?.user_id && (
+                <>
+                  {product.vendor?.name}
+                  <Link
+                    to={`/vendor/${product.vendor?.slug}/`}
+                    style={{ backgroundColor: "gray" }}
+                    className="btn ms-2"
+                    type="submit"
+                  >
+                    View Shop <i className="fas fa-shop" />{" "}
+                  </Link>
+                </>
+              )}
               <h2>{product.title}</h2>
 
               <p>{product.category?.title}</p>
@@ -398,28 +461,7 @@ const FollowedVendorsFeed = () => {
       </div>
 
       {/* Bottom navigation */}
-      <div className="bottom-bar">
-      <div className="nav-item">
-  <Link to="/vendor/orders/" className="text-decoration-none text-white">
-    <i className="fas fa-money-bill-wave"></i>
-    <br />
-    vendeur
-  </Link>
-</div>
-        <div className="nav-item add-btn">
-        <Link to="/add-product" className="text-decoration-none text-white">
-          <i class="fas fa-plus"></i>
-          </Link>
-        </div>
-        <div className="nav-item">
-        <Link to="/customer/orders/" className="text-decoration-none text-white">
-          <i class="fas fa-shopping-bag"></i>
-          <br />
-          Acheteur
-          </Link>
-        </div>
-      </div>
-
+       <BottomBar/>
       {/* Review overlay */}
       {selectedProduct && (
         <div className="review-overlay">
@@ -579,6 +621,11 @@ const FollowedVendorsFeed = () => {
               Ajouter en wishlist
             </button>
           </div>
+        </div>
+      )}
+      {products < 1 && (
+        <div className="feed-container">
+        <h5 style={{marginTop:"30px", fontSize: "16px"}} className="p-3">Vous ne suivez pas encore de vendeur</h5>
         </div>
       )}
     </div>

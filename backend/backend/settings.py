@@ -31,20 +31,22 @@ SECRET_KEY = 'django-insecure-i7!sk!h%z5m87gs^mpb$*e3ons*ew1dk=5(1qcnp5=(%er43s)
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost','192.168.137.1',"www.backend.findit.deals", "backend.findit.deals", 'http://192.168.1.13:5173/', 'http://localhost:5173', '127.0.0.1', '192.168.137.3','192.168.1.13', '192.168.1.3', 'http://192.168.1.13:8000/', "http://192.168.1.3:5173/", "http://192.168.1.13:5173/"]
+ALLOWED_HOSTS = [ 'localhost', '127.0.0.1',"backend.findit.deals",  "https://backend.findit.deals/",
+    "www.backend.findit.deals/",  "findit.deals",  "https://findit.deals", "www.findit.deals/",]
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",  # Exemple pour React
+   "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "http://192.168.1.3",
-    "http://192.168.1.3:5173",
-    "http://192.168.1.13:5173",
-    "http://192.168.1.13",
-    "https://backend.findit.deals/",
-    "www.backend.findit.deals",
-
+     "https://backend.findit.deals",
 ]
 
+#  "http://localhost:5173",  # Exemple pour React
+#     "http://127.0.0.1:5173",
+#     "http://192.168.1.3",
+#     "http://192.168.1.3:5173",
+#     "http://192.168.1.13:5173",
+#     "http://192.168.1.13",
+#     
 # Application definition
 
 INSTALLED_APPS = [
@@ -162,11 +164,12 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 
 DATABASES = {
      'default': {
-        'ENGINE': 'django.db.backends.postgresql',
+         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'real_findit',
         'USER': 'postgres',
         'PASSWORD': 'Olivier1207.',
         'HOST': 'localhost',
+        
     }
 }
 

@@ -1,4 +1,4 @@
-html {
+/* html {
   scroll-snap-type: y mandatory;
 }
 
@@ -40,4 +40,19 @@ html {
   object-fit: fill;
   width: 100%;
   height: 100%;
+} */
+ /* Chrome, Edge, Safari */
+::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
 }
+::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+
+/* Firefox */
+* {
+  scrollbar-width: none;
+  scrollbar-color: transparent transparent;
+}
+

@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+   base: '/',
   plugins: [
     react(),
     VitePWA({
@@ -16,7 +17,6 @@ export default defineConfig({
   },
       devOptions: {
         enabled: true,
-        navigateFallback: 'index.html',
         type: 'module',
       },
       includeAssets: ['icons/favicon.png', 'icons/apple-touch-icon.png'],
@@ -73,11 +73,14 @@ export default defineConfig({
       }
     })
   ],
-  server: {
-    host: '0.0.0.0',
-    port: 5173,
-  },
-  build: {
-    minify: false
-  },
+ build: {
+    rollupOptions: {
+      output: {
+        entryFileNames: 'assets/index-[hash].js',
+        chunkFileNames: 'assets/chunk-[hash].js',
+        assetFileNames: 'assets/[name]-[hash][extname]',
+      },
+    },
+ 
+}
 })
