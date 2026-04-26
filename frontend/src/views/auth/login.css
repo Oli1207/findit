@@ -8,7 +8,7 @@ body {
 }
 
 .login-container {
-    min-height: 100vh;
+    /* min-height: 100vh; */
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -101,4 +101,18 @@ h2 {
 }
 .sign-up-prompt a:hover {
     text-decoration: underline;
+}
+
+/* ===== Quand Login est dans un modal ===== */
+.fi-modal-sheet .login-container {
+    min-height: auto;
+    padding: 0;
+    align-items: stretch;
+}
+
+.fi-modal-sheet .login-box {
+    max-width: 100%;
+    padding: 20px;
+    box-shadow: none;
+    background: transparent;
 }

@@ -1,789 +1,564 @@
-import React, { useState, useEffect } from 'react'
-import Swal from 'sweetalert2'
-import { CKEditor } from '@ckeditor/ckeditor5-react';
-import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
+// AddProduct.jsx — Création de produit
+// Mobile-first · zéro Bootstrap · 3 étapes · prefix: ap-
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import Swal from 'sweetalert2';
+import ReactCrop, { centerCrop } from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 import apiInstance from '../../utils/axios';
-
-import UserData from "../plugin/UserData";
-
-import { useNavigate } from 'react-router-dom';
-
-
-function AddProduct() {
-    const userData = UserData()
-
-    if (UserData()?.vendor_id === 0) {
-        window.location.href = '/vendor/register/'
-    }
-
-    const [product, setProduct] = useState({
-        title: '',
-        image: null,
-        description: '',
-        category: '',
-        price: '',
-        old_price: '',
-        shipping_amount: '',
-        stock_qty: '',
-        vendor: userData?.vendor_id
-    });
-    const [specifications, setSpecifications] = useState([{ title: '', content: '' }]);
-    const [colors, setColors] = useState([{ name: '', color_code: '', image: null }]);
-    const [sizes, setSizes] = useState([{ name: '', price: 0.00 }]);
-    const [gallery, setGallery] = useState([{ image: null }]);
-    const [category, setCategory] = useState([]);
-    const [isLoading, setIsLoading] = useState(false)
-    
-    const navigate = useNavigate()
-
-    const handleAddMore = (setStateFunction) => {
-        setStateFunction((prevState) => [...prevState, {}]);
-    };
-    
-    const handleRemove = (index, setStateFunction) => {
-        setStateFunction((prevState) => {
-            const newState = [...prevState];
-            newState.splice(index, 1);
-            return newState;
-        });
-    };
-
-    const handleInputChange = (index, field, value, setStateFunction) => {
-        setStateFunction((prevState) => {
-            const newState = [...prevState];
-            newState[index][field] = value;
-            return newState;
-        });
-    };
-
-    const handleImageChange = (index, event, setStateFunction) => {
-        const file = event.target.files[0];
-
-        if (file) {
-            const reader = new FileReader();
-
-            reader.onloadend = () => {
-                setStateFunction((prevState) => {
-                    const newState = [...prevState];
-                    newState[index].image = { file, preview: reader.result };
-                    return newState;
-                });
-            };
-
-            reader.readAsDataURL(file);
-        } else {
-            // Handle the case when no file is selected
-            setStateFunction((prevState) => {
-                const newState = [...prevState];
-                newState[index].image = null; // Set image to null
-                newState[index].preview = null; // Optionally set preview to null
-                return newState;
-            });
-        }
-    };
-
-    const handleProductInputChange = (event) => {
-        setProduct({
-            ...product,
-            [event.target.name]: event.target.value
-        })
-    };
-
-    const handleProductFileChange = (event) => {
-        const file = event.target.files[0];
-
-        if (file) {
-            const reader = new FileReader();
-
-            reader.onloadend = () => {
-                setProduct({
-                    ...product,
-                    image: {
-                        file: event.target.files[0],
-                        preview: reader.result
-                    }
-                });
-            };
-
-            reader.readAsDataURL(file);
-        }
-    }
-
-
-    useEffect(() => {
-        const fetchCategory = async () => {
-            apiInstance.get('category/').then((res) => {
-                setCategory(res.data)
-            })
-        }
-        fetchCategory()
-    }, [])
-
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setIsLoading(true)
-        if (product.title == "" || product.description == "" || product.price == "" || product.category === null || product.stock_qty == "" || product.image === null) {
-            // If any required field is missing, show an error message or take appropriate action
-            console.log("Please fill in all required fields");
-            setIsLoading(false)
-
-            Swal.fire({
-                icon: 'warning',
-                title: 'Missing Fields!',
-                text: "All fields are required to create a product",
-            })
-            return;
-        }
-
-        try {
-            // Create a FormData object
-            setIsLoading(true)
-            const formData = new FormData();
-
-            // Append product data
-            Object.entries(product).forEach(([key, value]) => {
-                if (key === 'image' && value) {
-                    formData.append(key, value.file);  // Assuming 'value' is an object with 'file' property
-                } else {
-                    formData.append(key, value);
-                }
-            });
-
-            // Append specifications data
-            specifications.forEach((specification, index) => {
-                Object.entries(specification).forEach(([key, value]) => {
-                    formData.append(`specifications[${index}][${key}]`, value);
-                });
-            });
-
-
-            colors.forEach((color, index) => {
-                Object.entries(color).forEach(([key, value]) => {
-                    if (key === 'image' && value && value.file && value.file.type.startsWith('image/')) {
-                        formData.append(`colors[${index}][${key}]`, value.file, value.file.name);
-                    } else {
-                        console.log(String(value));
-                        formData.append(`colors[${index}][${key}]`, String(value)); // Convert `value` to a string
-                    }
-                });
-            });
-
-            // Append sizes data
-            sizes.forEach((size, index) => {
-                Object.entries(size).forEach(([key, value]) => {
-                    formData.append(`sizes[${index}][${key}]`, value);
-                });
-            });
-
-            // Append gallery data
-            gallery.forEach((item, index) => {
-                if (item.image) {
-                    formData.append(`gallery[${index}][image]`, item.image.file);
-                }
-            });
-
-            const response = await apiInstance.post(`vendor-create-product/`, formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            
-            });
-
-             navigate('/')
-            
-            Swal.fire({
-                icon: 'success',
-                title: 'Product Created Successfully',
-                text: 'This product has been successfully created',
-            });
-            const data = await response.json();
-            console.log(product)
-
-
-            
-        } catch (error) {
-            console.error('Error submitting form:', error);
-            setIsLoading(false)
-
-        }
-    };
-
-    const getColorNameFromHex = (hex) => {
-    const colorNames = {
-        "#ffffff": "White",
-        "#000000": "Black",
-        "#ff0000": "Red",
-        "#00ff00": "Lime",
-        "#0000ff": "Blue",
-        "#ffff00": "Yellow",
-        "#ffa500": "Orange",
-        "#800080": "Purple",
-        "#808080": "Gray",
-        "#00ffff": "Cyan",
-        "#ffc0cb": "Pink"
-    };
-    return colorNames[hex.toLowerCase()] || "Custom Color";
-};
-
-
-    return (
-        <div>
-            <div className="container-fluid" id="main">
-                <div className="row row-offcanvas row-offcanvas-left h-100">
-                    
-                    {/*/col*/}
-                    <div className="col-md-9 col-lg-10 main mt-4">
-                        <div className="container">
-                            <form className="main-body" method='POST' encType="multipart/form-data" onSubmit={handleSubmit}>
-                                <div className="tab-content" id="pills-tabContent">
-                                    <div
-                                        className="tab-pane fade show active"
-                                        id="pills-home"
-                                        role="tabpanel"
-                                        aria-labelledby="pills-home-tab"
-                                    >
-                                        <div className="row gutters-sm shadow p-4 rounded">
-                                            <h4 className="mb-4">Détails du produit</h4>
-                                            <div className="col-md-4 mb-3">
-                                                <div className="card h-100">
-                                                    <div className="card-body">
-                                                        <div className="d-flex flex-column align-items-center text-center">
-                                                            {product.image && product.image.preview ? (
-                                                                <img
-                                                                    src={product.image.preview}
-                                                                    alt="Product Thumbnail Preview"
-                                                                    style={{ width: '100%', height: '200px', objectFit: 'cover', borderRadius: 10 }}
-                                                                />
-                                                            ) : (
-                                                                <img
-                                                                    src="https://developers.elementor.com/docs/assets/img/elementor-placeholder-image.png"
-                                                                    style={{ width: '100%', height: '200px', objectFit: 'cover', borderRadius: 10 }}
-                                                                    alt=""
-                                                                />
-                                                            )}
-
-                                                            <div className="mt-3">
-                                                                {product.title !== "" &&
-                                                                    <h4 className="text-dark">{product.title}</h4>
-                                                                }
-                                                                {product.title === "" &&
-                                                                    <h4 className="text-dark">Product Title</h4>
-                                                                }
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className="col-md-8">
-                                                <div className="card mb-3">
-
-                                                    <div className="card-body">
-
-                                                        <div className="row text-dark">
-                                                            <div className="col-lg-12 mb-2">
-                                                                <label htmlFor="" className="mb-2">
-                                                                    Miniature du produit
-                                                                </label>
-                                                                <input
-                                                                    type="file"
-                                                                    className="form-control"
-                                                                    name="image"
-                                                                    id=""
-                                                                    onChange={handleProductFileChange}
-                                                                />
-                                                            </div>
-                                                            <div className="col-lg-12 mb-2 ">
-                                                                <label htmlFor="" className="mb-2">
-                                                                    Titre
-                                                                </label>
-                                                                <input
-                                                                    type="text"
-                                                                    className="form-control"
-                                                                    id=""
-                                                                    name="title"
-                                                                    value={product.title || ''}
-                                                                    onChange={handleProductInputChange}
-                                                                />
-                                                            </div>
-                                                            <div className="col-lg-12 mb-2">
-                                                                <label htmlFor="" className="mb-2">
-                                                                    Description
-                                                                </label>
-                                                                <textarea
-                                                                    className="form-control"
-                                                                    id=""
-                                                                    cols={30}
-                                                                    rows={10}
-                                                                    defaultValue={""}
-                                                                    name="description"
-                                                                    value={product.description || ''}
-                                                                    onChange={handleProductInputChange}
-                                                                />
-                                                                {/* <CKEditor
-                                                                    editor={ClassicEditor}
-                                                                    data="<p>Hello from CKEditor&nbsp;5!</p>"
-                                                                    onReady={editor => {
-                                                                        // You can store the "editor" and use when it is needed.
-                                                                        console.log('Editor is ready to use!', editor);
-                                                                    }}
-                                                                    onChange={(event) => handleProductInputChange()}
-                                                                    onBlur={(event, editor) => {
-                                                                        console.log('Blur.', editor);
-                                                                    }}
-                                                                    onFocus={(event, editor) => {
-                                                                        console.log('Focus.', editor);
-                                                                    }}
-                                                                /> */}
-                                                            </div>
-                                                            <div className="col-lg-6 mb-2">
-                                                                <label htmlFor="" className="mb-2">
-                                                                    Catégorie
-                                                                </label>
-                                                                <select
-                                                                    className="select form-control"
-                                                                    id=""
-                                                                    name="category"
-                                                                    value={product.category || ''}
-                                                                    onChange={handleProductInputChange}
-                                                                >
-                                                                    <option value="">- Select -</option>
-                                                                    {category.map((c, index) => (
-                                                                        <option key={index} value={c.id}>{c.title}</option>
-                                                                    ))}
-                                                                </select>
-                                                            </div>
-                                                            
-                                                            <div className="col-lg-6 mb-2 ">
-                                                                <label htmlFor="" className="mb-2">
-                                                                   Prix
-                                                                </label>
-                                                                <input
-                                                                    type="number"
-                                                                    className="form-control"
-                                                                    name="price"
-                                                                    value={product.price || ''}
-                                                                    onChange={handleProductInputChange}
-                                                                />
-                                                            </div>
-                                                            {/* <div className="col-lg-6 mb-2 ">
-                                                                <label htmlFor="" className="mb-2">
-                                                                    Regular Price
-                                                                </label>
-                                                                <input
-                                                                    type="number"
-                                                                    className="form-control"
-                                                                    name="old_price"
-                                                                    value={product.old_price || ''}
-                                                                    onChange={handleProductInputChange}
-                                                                />
-                                                            </div>
-                                                            <div className="col-lg-6 mb-2 ">
-                                                                <label htmlFor="" className="mb-2">
-                                                                    Shipping Amount
-                                                                </label>
-                                                                <input
-                                                                    type="number"
-                                                                    className="form-control"
-                                                                    name="shipping_amount"
-                                                                    value={product.shipping_amount || ''}
-                                                                    onChange={handleProductInputChange}
-                                                                />
-                                                            </div> */}
-                                                            <div className="col-lg-6 mb-2 ">
-                                                                <label htmlFor="" className="mb-2">
-                                                                    Quantité
-                                                                </label>
-                                                                <input
-                                                                    type="number"
-                                                                    className="form-control"
-                                                                    name="stock_qty"
-                                                                    value={product.stock_qty || ''}
-                                                                    onChange={handleProductInputChange}
-                                                                    required
-                                                                />
-                                                            </div>
-                                                           <small>
-                                                            vous pouvez déjà créer le produit les autres champs sont facultatifs
-                                                            </small>
-                                                        </div>
-
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div
-                                        className="tab-pane fade"
-                                        id="pills-profile"
-                                        role="tabpanel"
-                                        aria-labelledby="pills-profile-tab"
-                                    >
-                                        <div className="row gutters-sm shadow p-4 rounded">
-                                            <h4 className="mb-4">Image du produit</h4>
-                                            <div className="col-md-12">
-                                                <div className="card mb-3">
-                                                    <div className="card-body">
-                                                        {gallery.map((item, index) => (
-
-                                                            <div className="row text-dark mb-5">
-                                                                <div className="col-lg-3">
-                                                                    {item.image && (
-                                                                        <img
-                                                                            src={item.image.preview}
-                                                                            alt={`Preview for gallery item ${index + 1}`}
-                                                                            style={{ width: '100%', height: '100px', objectFit: 'cover', borderRadius: 5 }}
-                                                                        />
-                                                                    )}
-
-                                                                    {!item.image && (
-                                                                        <img
-                                                                            src="https://developers.elementor.com/docs/assets/img/elementor-placeholder-image.png"
-                                                                            alt={`Preview for gallery item ${index + 1}`}
-                                                                            style={{ width: '100%', height: '100px', objectFit: 'cover', borderRadius: 5 }}
-                                                                        />
-                                                                    )}
-                                                                </div>
-                                                                <div className="col-lg-6 mb-2">
-                                                                    <label htmlFor="" className="mb-2">
-                                                                        Image du produit
-                                                                    </label>
-                                                                    <input
-                                                                        type="file"
-                                                                        className="form-control"
-                                                                        name=""
-                                                                        id=""
-                                                                        onChange={(e) => handleImageChange(index, e, setGallery)}
-                                                                    />
-                                                                </div>
-                                                                <div className="col-lg-3 mt-2">
-                                                                    <button onClick={() => handleRemove(index, setGallery)} type='button' className='btn btn-danger mt-4'>Supprimez</button>
-                                                                </div>
-
-                                                            </div>
-                                                        ))}
-
-                                                        {gallery < 1 &&
-                                                            <h4>Pas d'images ajoutées</h4>
-                                                        }
-
-                                                        <button type='button' onClick={() => handleAddMore(setGallery)} className="btn btn-primary mt-2">
-                                                            <i className="fas fa-plus" /> Ajoutez plus d'images
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div
-                                        className="tab-pane fade"
-                                        id="pills-contact"
-                                        role="tabpanel"
-                                        aria-labelledby="pills-contact-tab"
-                                    >
-                                        <div className="row gutters-sm shadow p-4 rounded">
-                                            <h4 className="mb-4">Specifications</h4>
-                                            <div className="col-md-12">
-                                                <div className="card mb-3">
-                                                    <div className="card-body">
-
-                                                        {specifications.map((specification, index) => (
-
-                                                            <div className="row text-dark">
-                                                                <div className="col-lg-3 mb-2">
-                                                                    <label htmlFor="" className="mb-2">
-                                                                        Titre
-                                                                    </label>
-                                                                    <input
-                                                                        type="text"
-                                                                        className="form-control"
-                                                                        value={specification.title || ''}
-                                                                        onChange={(e) => handleInputChange(index, 'title', e.target.value, setSpecifications)}
-
-                                                                    />
-                                                                </div>
-                                                                <div className="col-lg-6 mb-2">
-                                                                    <label htmlFor="" className="mb-2">
-                                                                        Texte
-                                                                    </label>
-                                                                    <input
-                                                                        type="text"
-                                                                        className="form-control"
-                                                                        value={specification.content || ''}
-                                                                        onChange={(e) => handleInputChange(index, 'content', e.target.value, setSpecifications)}
-
-                                                                    />
-                                                                </div>
-                                                                <div className="col-lg-3 mb-2">
-                                                                    <button type='button' onClick={() => handleRemove(index, setSpecifications)} className='btn btn-danger mt-4'>Supprimez</button>
-                                                                </div>
-                                                            </div>
-                                                        ))}
-
-                                                        {specifications.length < 1 &&
-                                                            <h4>Pas de spécification</h4>
-                                                        }
-
-                                                        <button type='button' onClick={() => handleAddMore(setSpecifications)} className="btn btn-primary mt-2">
-                                                            <i className="fas fa-plus" /> Ajouter plus de spécifications
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div
-                                        className="tab-pane fade"
-                                        id="pills-size"
-                                        role="tabpanel"
-                                        aria-labelledby="pills-size-tab"
-                                    >
-                                        <div className="row gutters-sm shadow p-4 rounded">
-                                            <h4 className="mb-4">Sizes</h4>
-                                            <div className="col-md-12">
-                                                <div className="card mb-3">
-                                                    <div className="card-body">
-                                                        {sizes.map((s, index) => (
-
-                                                            <div className="row text-dark">
-                                                                <div className="col-lg-3 mb-2">
-                                                                    <label htmlFor="" className="mb-2">
-                                                                        Taille
-                                                                    </label>
-                                                                    <input
-                                                                        type="text"
-                                                                        className="form-control"
-                                                                        name=""
-                                                                        placeholder="XXL"
-                                                                        id=""
-                                                                        value={s.name || ''}
-                                                                        onChange={(e) => handleInputChange(index, 'name', e.target.value, setSizes)}
-
-                                                                    />
-                                                                </div>
-                                                                {/* <div className="col-lg-6 mb-2">
-                                                                    <label htmlFor="" className="mb-2">
-                                                                        Price
-                                                                    </label>
-                                                                    <input
-                                                                        type="number"
-                                                                        placeholder="$20"
-                                                                        className="form-control"
-                                                                        name=""
-                                                                        id=""
-                                                                        value={s.price || ''}
-                                                                        onChange={(e) => handleInputChange(index, 'price', e.target.value, setSizes)}
-
-                                                                    />
-                                                                </div> */}
-                                                                <div className="col-lg-3 mt-2">
-                                                                    <button type='button' onClick={() => handleRemove(index, setSizes)} className='btn btn-danger mt-4'>Supprimez</button>
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                        {sizes < 1 &&
-                                                            <h4>Pas de taille ajoutée</h4>
-                                                        }
-                                                        <button type='button' onClick={() => handleAddMore(setSizes)} className="btn btn-primary mt-2">
-                                                            <i className="fas fa-plus" /> Ajouter plus de tailles
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div
-                                        className="tab-pane fade"
-                                        id="pills-color"
-                                        role="tabpanel"
-                                        aria-labelledby="pills-color-tab"
-                                    >
-                                        <div className="row gutters-sm shadow p-4 rounded">
-                                            <h4 className="mb-4">Couleur</h4>
-                                            <div className="col-md-12">
-                                                <div className="card mb-3">
-                                                    <div className="card-body">
-                                                       {colors.map((c, index) => (
-    <div className="row text-dark mb-3" key={index}>
-        <div className="col-lg-2 mb-2">
-            <label htmlFor="" className="mb-2">Choisissez une couleur</label>
-            <input
-                type="color"
-                className="form-control form-control-color"
-                value={c.color_code || '#ffffff'}
-                onChange={(e) => {
-                    const hex = e.target.value;
-                    handleInputChange(index, 'color_code', hex, setColors);
-                    const name = getColorNameFromHex(hex); // Fonction ci-dessous
-                    handleInputChange(index, 'name', name, setColors);
-                }}
-                title="Choisissez une couleur"
-            />
-        </div>
-
-        <div className="col-lg-2 mb-2">
-            <label htmlFor="" className="mb-2">Couleur</label>
-            <input
-                type="text"
-                className="form-control"
-                value={c.name || ''}
-                readOnly
-            />
-        </div>
-
-        {/* <div className="col-lg-3 mb-2">
-            <label htmlFor="" className="mb-2">Image</label>
-            <input
-                type="file"
-                className="form-control"
-                onChange={(e) => handleImageChange(index, e, setColors)}
-            />
-        </div>
-
-        <div className="col-lg-3 mt-2">
-            {c.image ? (
-                <img
-                    src={c.image.preview}
-                    alt={`Preview for gallery item ${index + 1}`}
-                    style={{ width: '100%', height: '100px', objectFit: 'cover', borderRadius: 5 }}
-                />
-            ) : (
-                <img
-                    src="https://developers.elementor.com/docs/assets/img/elementor-placeholder-image.png"
-                    alt={`Preview for gallery item ${index + 1}`}
-                    style={{ width: '100%', height: '100px', objectFit: 'cover', borderRadius: 5 }}
-                />
-            )}
-        </div> */}
-
-        <div className="col-lg-2 mt-2">
-            <button
-                type="button"
-                onClick={() => handleRemove(index, setColors)}
-                className="btn btn-danger mt-4"
-            >
-                Supprimer
-            </button>
-        </div>
-    </div>
-))}
-
-
-                                                        {colors < 1 &&
-                                                            <h4>No Colors Added</h4>
-                                                        }
-
-                                                        <button type='button' onClick={() => handleAddMore(setColors)} className="btn btn-primary mt-2">
-                                                            <i className="fas fa-plus" /> Add More Colors
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <ul
-                                            className="nav nav-pills mb-3 d-flex justify-content-center mt-5"
-                                            id="pills-tab"
-                                            role="tablist"
-                                        >
-                                            <li className="nav-item" role="presentation">
-                                                <button
-                                                    className="nav-link active"
-                                                    id="pills-home-tab"
-                                                    data-bs-toggle="pill"
-                                                    data-bs-target="#pills-home"
-                                                    type="button"
-                                                    role="tab"
-                                                    aria-controls="pills-home"
-                                                    aria-selected="true"
-                                                >
-                                                    Informations Basiques
-                                                </button>
-                                            </li>
-                                            <li className="nav-item" role="presentation">
-                                                <button
-                                                    className="nav-link"
-                                                    id="pills-profile-tab"
-                                                    data-bs-toggle="pill"
-                                                    data-bs-target="#pills-profile"
-                                                    type="button"
-                                                    role="tab"
-                                                    aria-controls="pills-profile"
-                                                    aria-selected="false"
-                                                >
-                                                    Gallerie
-                                                </button>
-                                            </li>
-                                            <li className="nav-item" role="presentation">
-                                                <button
-                                                    className="nav-link"
-                                                    id="pills-contact-tab"
-                                                    data-bs-toggle="pill"
-                                                    data-bs-target="#pills-contact"
-                                                    type="button"
-                                                    role="tab"
-                                                    aria-controls="pills-contact"
-                                                    aria-selected="false"
-                                                >
-                                                    Specifications
-                                                </button>
-                                            </li>
-                                            <li className="nav-item" role="presentation">
-                                                <button
-                                                    className="nav-link"
-                                                    id="pills-size-tab"
-                                                    data-bs-toggle="pill"
-                                                    data-bs-target="#pills-size"
-                                                    type="button"
-                                                    role="tab"
-                                                    aria-controls="pills-size"
-                                                    aria-selected="false"
-                                                >
-                                                    Taille
-                                                </button>
-                                            </li>
-                                            <li className="nav-item" role="presentation">
-                                                <button
-                                                    className="nav-link"
-                                                    id="pills-color-tab"
-                                                    data-bs-toggle="pill"
-                                                    data-bs-target="#pills-color"
-                                                    type="button"
-                                                    role="tab"
-                                                    aria-controls="pills-color"
-                                                    aria-selected="false"
-                                                >
-                                                    Couleur
-                                                </button>
-                                            </li>
-                                        </ul>
-                                        <div className="d-flex justify-content-center mb-5">
-                                            {isLoading === false &&
-                                                <button type='submit' className="btn btn-success w-50">
-                                                    Créer le produit <i className="fa fa-check-circle" />{" "}
-                                                </button>
-                                            }
-
-                                            {isLoading === true &&
-                                                <button disabled className="btn btn-success w-50">
-                                                    Creating... <i className="fa fa-spinner fa-spin" />{" "}
-                                                </button>
-                                            }
-                                        </div>
-                                    </div>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-    )
+import UserData from '../plugin/UserData';
+import { getCroppedImgFile } from '../../utils/canvasUtils';
+import './addproduct.css';
+
+// ─── Toast ───────────────────────────────────────────────────────────────────
+const Toast = Swal.mixin({
+  toast: true,
+  position: 'top',
+  showConfirmButton: false,
+  timer: 3000,
+  timerProgressBar: true,
+  background: '#1a1a1a',
+  color: '#fff',
+});
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+const MAX_PHOTOS = 5; // 1 cover + 4 gallery
+
+function initCrop(w, h) {
+  return centerCrop({ unit: '%', width: 90, height: 90 }, w, h);
 }
 
-export default AddProduct
+const COLOR_NAMES = {
+  '#ffffff': 'Blanc',   '#000000': 'Noir',    '#ff0000': 'Rouge',
+  '#00ff00': 'Vert',    '#0000ff': 'Bleu',    '#ffff00': 'Jaune',
+  '#ffa500': 'Orange',  '#800080': 'Violet',  '#808080': 'Gris',
+  '#ffc0cb': 'Rose',    '#a52a2a': 'Marron',  '#c0c0c0': 'Argent',
+  '#ffd700': 'Or',
+};
+
+const STEPS = ['Photos', 'Détails', 'Options'];
+
+// ─── Component ───────────────────────────────────────────────────────────────
+export default function AddProduct() {
+  const navigate  = useNavigate();
+  const location  = useLocation();
+  const userData  = UserData();
+
+  const [step,       setStep]      = useState(0);
+  const [isLoading,  setIsLoading] = useState(false);
+  const [categories, setCategories] = useState([]);
+
+  // ── Product fields ─────────────────────────────────────────────────────────
+  const [product, setProduct] = useState({
+    title: '', description: '', category: '', price: '', stock_qty: '',
+  });
+  const [images, setImages] = useState([]); // [{ file, preview }] index 0 = cover
+  const [sizes,  setSizes]  = useState([]);
+  const [colors, setColors] = useState([]);
+  const [newSize,  setNewSize]  = useState('');
+  const [newColor, setNewColor] = useState('#df468f');
+
+  // ── Crop state ─────────────────────────────────────────────────────────────
+  const [cropOpen,   setCropOpen]   = useState(false);
+  const [imageSrc,   setImageSrc]   = useState(null);
+  const [crop,       setCrop]       = useState();
+  const [cropTarget, setCropTarget] = useState(null); // index | 'new'
+  const imgRef      = useRef(null);
+  const fileInputRef = useRef(null);
+
+  // ── Fetch categories ───────────────────────────────────────────────────────
+  useEffect(() => {
+    apiInstance.get('category/').then(res => {
+      setCategories(res.data.results || res.data || []);
+    }).catch(() => {});
+  }, []);
+
+  // ── Auto-open gallery if navigated from BottomBar ──────────────────────────
+  useEffect(() => {
+    if (location.state?.autoOpen) {
+      const t = setTimeout(() => fileInputRef.current?.click(), 250);
+      return () => clearTimeout(t);
+    }
+  }, []); // eslint-disable-line
+
+  // ── Redirect non-vendor ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (userData && userData.vendor_id === 0) navigate('/vendor/register/');
+  }, [userData?.vendor_id]); // eslint-disable-line
+
+  // ── File select → open crop ────────────────────────────────────────────────
+  const handleFileSelect = (e, target) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    e.target.value = null;
+    setCropTarget(target);
+    setCrop(undefined);
+    const reader = new FileReader();
+    reader.onloadend = () => { setImageSrc(reader.result); setCropOpen(true); };
+    reader.readAsDataURL(file);
+  };
+
+  const onImageLoaded = useCallback((img) => {
+    imgRef.current = img;
+    setCrop(initCrop(img.naturalWidth, img.naturalHeight));
+    return false;
+  }, []);
+
+  const handleCropDone = async () => {
+    if (!imgRef.current || !crop?.width || !crop?.height) return;
+    setIsLoading(true);
+    try {
+      const scaleX = imgRef.current.naturalWidth  / imgRef.current.width;
+      const scaleY = imgRef.current.naturalHeight / imgRef.current.height;
+      const px = {
+        x: crop.x * scaleX, y: crop.y * scaleY,
+        width: crop.width * scaleX, height: crop.height * scaleY,
+      };
+      const file    = await getCroppedImgFile(imgRef.current, px, `photo_${Date.now()}.jpg`);
+      const preview = URL.createObjectURL(file);
+      const newImg  = { file, preview };
+
+      if (cropTarget === 'new') {
+        setImages(prev => prev.length < MAX_PHOTOS ? [...prev, newImg] : prev);
+      } else {
+        setImages(prev => prev.map((img, i) => i === cropTarget ? newImg : img));
+      }
+      setCropOpen(false); setImageSrc(null); setCrop(undefined); setCropTarget(null);
+    } catch {
+      Toast.fire({ icon: 'error', title: "Erreur de traitement de l'image." });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const removeImage = (index) => setImages(prev => prev.filter((_, i) => i !== index));
+
+  // ── Sizes ──────────────────────────────────────────────────────────────────
+  const addSize = () => {
+    const s = newSize.trim().toUpperCase();
+    if (s && !sizes.includes(s)) { setSizes(p => [...p, s]); setNewSize(''); }
+  };
+
+  // ── Colors ─────────────────────────────────────────────────────────────────
+  const addColor = () => {
+    const name = COLOR_NAMES[newColor.toLowerCase()] || 'Personnalisé';
+    if (!colors.find(c => c.code === newColor)) setColors(p => [...p, { code: newColor, name }]);
+  };
+
+  // ── Step validation ────────────────────────────────────────────────────────
+  const canProceed = () => {
+    if (step === 0) return images.length > 0;
+    if (step === 1) return product.title && product.price && product.stock_qty && product.category;
+    return true;
+  };
+
+  // ── Submit ─────────────────────────────────────────────────────────────────
+  const handleSubmit = async () => {
+    setIsLoading(true);
+    try {
+      const fd = new FormData();
+      fd.append('title',       product.title);
+      fd.append('description', product.description);
+      fd.append('category',    product.category);
+      fd.append('price',       product.price);
+      fd.append('stock_qty',   product.stock_qty);
+      fd.append('vendor',      userData.vendor_id);
+      if (images[0]) fd.append('image', images[0].file);
+      images.slice(1).forEach((img, i) => fd.append(`gallery[${i}][image]`, img.file));
+      sizes.forEach((s, i)  => fd.append(`sizes[${i}][name]`, s));
+      colors.forEach((c, i) => {
+        fd.append(`colors[${i}][name]`,       c.name);
+        fd.append(`colors[${i}][color_code]`, c.code);
+      });
+
+      await apiInstance.post('vendor-create-product/', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      Toast.fire({ icon: 'success', title: 'Produit publié ✓' });
+      navigate('/profile/');
+    } catch {
+      Toast.fire({ icon: 'error', title: 'Erreur lors de la publication.' });
+      setIsLoading(false);
+    }
+  };
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+  return (
+    <div className="ap-page">
+
+      {/* Hidden file input (shared) */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="ap-file-hidden"
+        onChange={e => handleFileSelect(e, 'new')}
+      />
+
+      {/* ── Topbar ── */}
+      <div className="ap-topbar">
+        <button
+          className="ap-back-btn"
+          onClick={() => step > 0 ? setStep(s => s - 1) : navigate(-1)}
+          aria-label="Retour"
+        >
+          <i className="fas fa-arrow-left" />
+        </button>
+        <span className="ap-topbar-title">
+          {step === 0 ? 'Ajouter des photos' : step === 1 ? 'Détails du produit' : 'Options'}
+        </span>
+        {step < 2 ? (
+          <button
+            className={`ap-action-btn${canProceed() ? '' : ' ap-action-btn--off'}`}
+            onClick={() => canProceed() && setStep(s => s + 1)}
+            disabled={!canProceed()}
+          >
+            Suivant <i className="fas fa-chevron-right" />
+          </button>
+        ) : (
+          <button
+            className="ap-action-btn"
+            onClick={handleSubmit}
+            disabled={isLoading}
+          >
+            {isLoading
+              ? <><div className="ap-btn-spinner" /></>
+              : <><i className="fas fa-paper-plane" /> Publier</>
+            }
+          </button>
+        )}
+      </div>
+
+      {/* ── Step indicator ── */}
+      <div className="ap-steps">
+        {STEPS.map((label, i) => (
+          <React.Fragment key={i}>
+            <div className={`ap-step${i <= step ? ' ap-step--active' : ''}`}>
+              <div className="ap-step-dot">
+                {i < step ? <i className="fas fa-check" /> : <span>{i + 1}</span>}
+              </div>
+              <span className="ap-step-label">{label}</span>
+            </div>
+            {i < STEPS.length - 1 && (
+              <div className={`ap-step-line${i < step ? ' ap-step-line--done' : ''}`} />
+            )}
+          </React.Fragment>
+        ))}
+      </div>
+
+      {/* ══════════ STEP 0 — PHOTOS ══════════ */}
+      {step === 0 && (
+        <div className="ap-content">
+          {images.length === 0 ? (
+            /* Empty state */
+            <div className="ap-drop-zone" onClick={() => fileInputRef.current?.click()}>
+              <div className="ap-drop-icon">
+                <i className="fas fa-images" />
+              </div>
+              <p className="ap-drop-title">Ajouter des photos</p>
+              <p className="ap-drop-sub">
+                Choisissez jusqu'à {MAX_PHOTOS} photos depuis votre galerie.<br />
+                La première sera la photo de couverture.
+              </p>
+              <div className="ap-drop-cta">
+                <i className="fas fa-image" /> Ouvrir la galerie
+              </div>
+            </div>
+          ) : (
+            <div className="ap-photos-section">
+
+              {/* Grid */}
+              <div className="ap-photos-grid">
+
+                {/* Cover (always first, spans full width) */}
+                <div className="ap-photo-cover">
+                  <img src={images[0].preview} alt="cover" />
+                  <span className="ap-cover-badge">
+                    <i className="fas fa-star" /> Couverture
+                  </span>
+                  <button
+                    className="ap-photo-remove"
+                    onClick={() => removeImage(0)}
+                    aria-label="Supprimer"
+                  >
+                    <i className="fas fa-times" />
+                  </button>
+                </div>
+
+                {/* Gallery thumbnails */}
+                {images.slice(1).map((img, i) => (
+                  <div key={i + 1} className="ap-photo-thumb">
+                    <img src={img.preview} alt={`photo ${i + 2}`} />
+                    <button
+                      className="ap-photo-remove"
+                      onClick={() => removeImage(i + 1)}
+                      aria-label="Supprimer"
+                    >
+                      <i className="fas fa-times" />
+                    </button>
+                  </div>
+                ))}
+
+                {/* Add slot */}
+                {images.length < MAX_PHOTOS && (
+                  <div
+                    className="ap-photo-add"
+                    onClick={() => fileInputRef.current?.click()}
+                    role="button"
+                    tabIndex={0}
+                    aria-label="Ajouter une photo"
+                  >
+                    <i className="fas fa-plus" />
+                    <span>Ajouter</span>
+                  </div>
+                )}
+              </div>
+
+              <p className="ap-photos-hint">
+                <i className="fas fa-info-circle" />
+                {images.length}/{MAX_PHOTOS} photos · La 1ère = couverture
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ══════════ STEP 1 — DÉTAILS ══════════ */}
+      {step === 1 && (
+        <div className="ap-content">
+
+          {/* Thumb strip */}
+          <div className="ap-thumb-strip">
+            {images.slice(0, 4).map((img, i) => (
+              <img key={i} src={img.preview} alt="" className="ap-thumb-item" />
+            ))}
+            {images.length > 4 && (
+              <div className="ap-thumb-more">+{images.length - 4}</div>
+            )}
+            <span className="ap-thumb-label">{images.length} photo{images.length > 1 ? 's' : ''}</span>
+          </div>
+
+          <div className="ap-form-card">
+            <p className="ap-section-title">Informations essentielles</p>
+
+            <div className="ap-field">
+              <label className="ap-label">Titre du produit <span className="ap-req">*</span></label>
+              <input
+                className="ap-input"
+                type="text"
+                placeholder="Ex : Robe en soie noire, Sneakers vintage…"
+                value={product.title}
+                onChange={e => setProduct(p => ({ ...p, title: e.target.value }))}
+              />
+            </div>
+
+            <div className="ap-field">
+              <label className="ap-label">Catégorie <span className="ap-req">*</span></label>
+              <select
+                className="ap-select"
+                value={product.category}
+                onChange={e => setProduct(p => ({ ...p, category: e.target.value }))}
+              >
+                <option value="">Choisir une catégorie…</option>
+                {categories.map(c => (
+                  <option key={c.id} value={c.id}>{c.title}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="ap-field-row">
+              <div className="ap-field ap-field--half">
+                <label className="ap-label">Prix (FCFA) <span className="ap-req">*</span></label>
+                <input
+                  className="ap-input"
+                  type="number"
+                  placeholder="5 000"
+                  min="0"
+                  value={product.price}
+                  onChange={e => setProduct(p => ({ ...p, price: e.target.value }))}
+                />
+              </div>
+              <div className="ap-field ap-field--half">
+                <label className="ap-label">Quantité <span className="ap-req">*</span></label>
+                <input
+                  className="ap-input"
+                  type="number"
+                  placeholder="1"
+                  min="1"
+                  value={product.stock_qty}
+                  onChange={e => setProduct(p => ({ ...p, stock_qty: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="ap-field ap-field--last">
+              <label className="ap-label">Description</label>
+              <textarea
+                className="ap-textarea"
+                rows={4}
+                placeholder="Matière, état, dimensions, marque… tout ce qui aide l'acheteur."
+                value={product.description}
+                onChange={e => setProduct(p => ({ ...p, description: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <p className="ap-required-note">
+            <span className="ap-req">*</span> Champs obligatoires
+          </p>
+        </div>
+      )}
+
+      {/* ══════════ STEP 2 — OPTIONS ══════════ */}
+      {step === 2 && (
+        <div className="ap-content">
+
+          <div className="ap-info-banner">
+            <i className="fas fa-magic" />
+            <div>
+              <p className="ap-info-banner-title">Options facultatives</p>
+              <p className="ap-info-banner-sub">Tailles et couleurs améliorent vos ventes. Vous pouvez les ajouter plus tard.</p>
+            </div>
+          </div>
+
+          {/* Tailles */}
+          <div className="ap-form-card">
+            <p className="ap-section-title">Tailles disponibles</p>
+            <div className="ap-field ap-field--last">
+              {sizes.length > 0 && (
+                <div className="ap-chips">
+                  {sizes.map(s => (
+                    <span key={s} className="ap-chip">
+                      {s}
+                      <button
+                        type="button"
+                        className="ap-chip-remove"
+                        onClick={() => setSizes(p => p.filter(x => x !== s))}
+                      >
+                        <i className="fas fa-times" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div className="ap-chip-input-row">
+                <input
+                  className="ap-input"
+                  type="text"
+                  placeholder="XS  S  M  L  XL  38  40…"
+                  value={newSize}
+                  onChange={e => setNewSize(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addSize())}
+                />
+                <button className="ap-add-btn" type="button" onClick={addSize}>
+                  <i className="fas fa-plus" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Couleurs */}
+          <div className="ap-form-card">
+            <p className="ap-section-title">Couleurs disponibles</p>
+            <div className="ap-field ap-field--last">
+              {colors.length > 0 && (
+                <div className="ap-chips">
+                  {colors.map(c => (
+                    <span key={c.code} className="ap-chip">
+                      <span className="ap-chip-swatch" style={{ background: c.code }} />
+                      {c.name}
+                      <button
+                        type="button"
+                        className="ap-chip-remove"
+                        onClick={() => setColors(p => p.filter(x => x.code !== c.code))}
+                      >
+                        <i className="fas fa-times" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div className="ap-chip-input-row">
+                <input
+                  type="color"
+                  className="ap-color-picker"
+                  value={newColor}
+                  onChange={e => setNewColor(e.target.value)}
+                />
+                <span className="ap-color-name">
+                  {COLOR_NAMES[newColor.toLowerCase()] || 'Couleur personnalisée'}
+                </span>
+                <button className="ap-add-btn" type="button" onClick={addColor}>
+                  <i className="fas fa-plus" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Publish CTA */}
+          <button
+            className="ap-publish-cta"
+            onClick={handleSubmit}
+            disabled={isLoading}
+          >
+            {isLoading
+              ? <><div className="ap-btn-spinner" /> Publication en cours…</>
+              : <><i className="fas fa-paper-plane" /> Publier le produit</>
+            }
+          </button>
+
+        </div>
+      )}
+
+      {/* ══════════ CROP MODAL ══════════ */}
+      {cropOpen && (
+        <div className="ap-crop-overlay">
+          <div className="ap-crop-modal">
+            <div className="ap-crop-header">
+              <button
+                className="ap-crop-cancel"
+                onClick={() => { setCropOpen(false); setImageSrc(null); setCrop(undefined); setCropTarget(null); }}
+              >
+                Annuler
+              </button>
+              <span className="ap-crop-title">Recadrer la photo</span>
+              <button
+                className="ap-crop-ok"
+                onClick={handleCropDone}
+                disabled={!crop?.width || !crop?.height || isLoading}
+              >
+                {isLoading
+                  ? <div className="ap-btn-spinner ap-btn-spinner--dark" />
+                  : 'Valider'
+                }
+              </button>
+            </div>
+            <div className="ap-crop-body">
+              {imageSrc && (
+                <ReactCrop
+                  crop={crop}
+                  onChange={c => setCrop(c)}
+                  onComplete={c => setCrop(c)}
+                  minWidth={50}
+                >
+                  <img
+                    ref={imgRef}
+                    src={imageSrc}
+                    alt="Recadrer"
+                    onLoad={e => onImageLoaded(e.currentTarget)}
+                    style={{ maxHeight: '65vh', maxWidth: '100%', display: 'block' }}
+                  />
+                </ReactCrop>
+              )}
+            </div>
+            <p className="ap-crop-hint">
+              Faites glisser pour ajuster la zone de recadrage
+            </p>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}

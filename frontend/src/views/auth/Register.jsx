@@ -1,163 +1,218 @@
+// Register.jsx — Inscription Findit
+// Mobile-first · dark theme · zéro Bootstrap
 import React, { useState, useEffect } from 'react';
-import { login, register, setAuthUser } from '../../utils/auth';
+import { register, setAuthUser } from '../../utils/auth';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../../store/auth';
 import { GoogleLogin } from '@react-oauth/google';
+import Swal from 'sweetalert2';
 import apiInstance from '../../utils/axios';
-import Swal from 'sweetalert2'
+import logo from '../../assets/findit_logoo.png';
+import './auth.css';
 
-function Register() {
-  const [full_name, setFullname] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setMobile] = useState("");
-  const [password, setPassword] = useState("");
-  const [password2, setPassword2] = useState("");
+const Toast = Swal.mixin({
+  toast: true, position: 'top',
+  showConfirmButton: false, timer: 4000, timerProgressBar: true,
+  background: '#1a1a1a', color: '#fff',
+});
 
+// ── Password strength ────────────────────────────────────────────
+function getStrength(pwd) {
+  if (!pwd) return 0;
+  let score = 0;
+  if (pwd.length >= 8)                    score++;
+  if (/[A-Z]/.test(pwd))                  score++;
+  if (/[0-9]/.test(pwd))                  score++;
+  if (/[^A-Za-z0-9]/.test(pwd))           score++;
+  return score; // 0–4
+}
+const strengthLabel = ['', 'Faible', 'Moyen', 'Bon', 'Fort 🔒'];
+const strengthClass = ['', 'weak', 'medium', 'strong', 'strong'];
+
+export default function Register() {
+  const [fullName,  setFullName]  = useState('');
+  const [email,     setEmail]     = useState('');
+  const [phone,     setPhone]     = useState('');
+  const [password,  setPassword]  = useState('');
+  const [password2, setPassword2] = useState('');
+  const [showPwd,   setShowPwd]   = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
-  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+
+  const navigate   = useNavigate();
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
 
   useEffect(() => {
-    if (isLoggedIn()) {
-      navigate("/");
-    }
+    if (isLoggedIn()) navigate('/');
   }, [isLoggedIn, navigate]);
 
-  const handleGoogleLogin = async (tokenId, navigate) => {
-    const axios = apiInstance;
+  // ── Google OAuth ──────────────────────────────────────────────
+  const handleGoogleLogin = async (tokenId) => {
     try {
-        const { data } = await axios.post("user/google-login/", {
-            access_token: tokenId,
-        });
-
-        if (data.access && data.refresh) {
-            setAuthUser(data.access, data.refresh);
-            // Swal.fire("Connexion réussie avec Google", "", "success");
-            navigate("/");
-        } else {
-            console.warn("Réponse inattendue du backend", data);
-        }
-    } catch (error) {
-        console.error("Erreur Google Login :", error);
-        console.log("Réponse d'erreur :", error.response?.data);
-        Swal.fire("Erreur", "Impossible de se connecter avec Google", "error");
+      const { data } = await apiInstance.post('user/google-login/', { access_token: tokenId });
+      if (data.access && data.refresh) {
+        setAuthUser(data.access, data.refresh);
+        navigate('/');
+      }
+    } catch {
+      Toast.fire({ icon: 'error', title: 'La connexion Google a échoué.' });
     }
-};
+  };
+
+  // ── Classic register ──────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (password !== password2) {
+      Toast.fire({ icon: 'warning', title: 'Les mots de passe ne correspondent pas.' });
+      return;
+    }
+    if (getStrength(password) < 2) {
+      Toast.fire({ icon: 'warning', title: 'Votre mot de passe est trop faible.' });
+      return;
+    }
     setIsLoading(true);
-
-    const { error } = await register(
-      full_name,
-      email,
-      phone,
-      password,
-      password2
-    );
-    
+    const { error } = await register(fullName, email, phone, password, password2);
     setIsLoading(false);
     if (error) {
-      alert(JSON.stringify(error));
+      const msg = typeof error === 'string'
+        ? error
+        : Object.values(error).flat()[0] || 'Une erreur est survenue.';
+      Toast.fire({ icon: 'error', title: msg });
     } else {
       navigate('/');
     }
   };
 
+  const strength = getStrength(password);
+
   return (
-    <div className="container" style={{paddingTop:"80px", marginTop: "50px", display: "flex", justifyContent: "center" }}>
-      <div className="row w-100">
-        {/* Left side with catchy message */}
-        <div className="col-md-6 d-flex align-items-center">
-          <div>
-            <h2>Rejoignez notre communauté !</h2>
-            <p>
-              Créez un compte dès maintenant et accédez à tous nos services exclusifs.
-              C'est rapide, facile, et vous ne le regretterez pas !
-            </p>
-          </div>
+    <div className="auth-page">
+      <div className="auth-blob auth-blob--1" />
+      <div className="auth-blob auth-blob--2" />
+
+      <div className="auth-card">
+        {/* Logo + headline */}
+        <div className="auth-logo-wrap">
+          <img src={logo} alt="Findit" className="auth-logo" />
+          <span className="auth-emoji">✨</span>
+          <h1 className="auth-headline">Bienvenue dans la famille !</h1>
+          <p className="auth-subline">
+            Créez votre compte en 30 secondes et commencez à vendre ou à dénicher des pépites.
+          </p>
         </div>
 
-        {/* Right side with the form */}
-        <div className="col-md-6">
-          <div className="p-4 border rounded shadow-sm">
-            <h3 className="text-center">Créer un compte</h3>
-            <form onSubmit={handleSubmit}>
-              <div className="mb-3">
-                <input 
-                  type="text" 
-                  className="form-control" 
-                  placeholder="Nom et Prénoms" 
-                  value={full_name} 
-                  onChange={(e) => setFullname(e.target.value)} 
-                  required 
-                />
-              </div>
+        {/* Google */}
+        <div className="auth-google-wrap">
+          <GoogleLogin
+            onSuccess={(r) => handleGoogleLogin(r.credential)}
+            onError={() => Toast.fire({ icon: 'error', title: 'La connexion Google a échoué.' })}
+            theme="filled_black"
+            shape="pill"
+            text="signup_with"
+            locale="fr"
+          />
+        </div>
 
-              <div className="mb-3">
-                <input 
-                  type="email" 
-                  className="form-control" 
-                  placeholder="Email" 
-                  value={email} 
-                  onChange={(e) => setEmail(e.target.value)} 
-                  required 
-                />
-              </div>
+        <div className="auth-divider"><span>ou avec vos infos</span></div>
 
-              <div className="mb-3">
-                <input 
-                  type="number" 
-                  className="form-control" 
-                  placeholder="Numéro de téléphone" 
-                  value={phone} 
-                  onChange={(e) => setMobile(e.target.value)} 
-                  required 
-                />
-              </div>
+        {/* Form */}
+        <form className="auth-form" onSubmit={handleSubmit}>
+          <div className="auth-field">
+            <label className="auth-label">Nom complet</label>
+            <input
+              className="auth-input"
+              type="text"
+              placeholder="Marie Koné"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              autoComplete="name"
+              required
+            />
+          </div>
 
-              <div className="mb-3">
-                <input 
-                  type="password" 
-                  className="form-control" 
-                  placeholder="Mot de passe" 
-                  value={password} 
-                  onChange={(e) => setPassword(e.target.value)} 
-                  required 
-                />
-              </div>
+          <div className="auth-field">
+            <label className="auth-label">Email</label>
+            <input
+              className="auth-input"
+              type="email"
+              placeholder="vous@exemple.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              required
+            />
+          </div>
 
-              <div className="mb-3">
-                <input 
-                  type="password" 
-                  className="form-control" 
-                  placeholder="Confirmer le mot de passe" 
-                  value={password2} 
-                  onChange={(e) => setPassword2(e.target.value)} 
-                  required 
-                />
-              </div>
+          <div className="auth-field">
+            <label className="auth-label">Numéro de téléphone</label>
+            <input
+              className="auth-input"
+              type="tel"
+              placeholder="+225 07 00 00 00 00"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              autoComplete="tel"
+              required
+            />
+          </div>
 
-              <button type="submit" className="btn btn-primary w-100" disabled={isLoading}>
-                {isLoading ? "Création en cours..." : "Créer un compte"}
+          <div className="auth-field">
+            <label className="auth-label">Mot de passe</label>
+            <div className="auth-input-wrap">
+              <input
+                className="auth-input auth-input--has-icon"
+                type={showPwd ? 'text' : 'password'}
+                placeholder="Min. 8 caractères"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="new-password"
+                required
+              />
+              <button type="button" className="auth-eye" onClick={() => setShowPwd((p) => !p)} tabIndex={-1}>
+                <i className={`fas fa-${showPwd ? 'eye-slash' : 'eye'}`} />
               </button>
-            </form>
-            <GoogleLogin
-  onSuccess={(credentialResponse) => {
-    const tokenId = credentialResponse.credential;
-    handleGoogleLogin(tokenId, navigate); // mutualisé
-  }}
-  onError={() => {
-    Swal.fire("Erreur", "La connexion Google a échoué", "error");
-  }}
-/>
-            <div className="text-center mt-3">
-              <p>Vous avez déjà un compte? <a href="/login">Se connecter</a></p>
             </div>
+            {/* Strength bars */}
+            {password && (
+              <>
+                <div className="auth-strength">
+                  {[1,2,3,4].map((n) => (
+                    <div
+                      key={n}
+                      className={`auth-strength-bar${strength >= n ? ` auth-strength-bar--${strengthClass[strength]}` : ''}`}
+                    />
+                  ))}
+                </div>
+                <span className="auth-strength-label">{strengthLabel[strength]}</span>
+              </>
+            )}
           </div>
-        </div>
+
+          <div className="auth-field">
+            <label className="auth-label">Confirmer le mot de passe</label>
+            <input
+              className={`auth-input${password2 && password2 !== password ? ' auth-input--error' : ''}`}
+              type="password"
+              placeholder="••••••••"
+              value={password2}
+              onChange={(e) => setPassword2(e.target.value)}
+              autoComplete="new-password"
+              required
+            />
+          </div>
+
+          <button className="auth-btn" type="submit" disabled={isLoading}>
+            {isLoading
+              ? <><div className="auth-spinner" /> Création en cours…</>
+              : <><i className="fas fa-user-plus" /> Créer mon compte</>
+            }
+          </button>
+        </form>
+
+        <p className="auth-footer">
+          Déjà un compte ?{' '}
+          <Link to="/login" className="auth-link">Se connecter</Link>
+        </p>
       </div>
     </div>
   );
 }
-
-export default Register;

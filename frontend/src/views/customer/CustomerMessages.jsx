@@ -1,144 +1,189 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import apiInstance from "../../utils/axios";
-import UserData from "../plugin/UserData";
-import { SERVER_URL } from "../../utils/constants";
-import "../vendor/vendormessages.css";
+// CustomerMessages.jsx — Conversation list (customer side)
+// Smart polling 15s + last message preview + unread badge + search
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import apiInstance from '../../utils/axios';
+import UserData from '../plugin/UserData';
+import './messages.css';
 
-const CustomerMessages = () => {
-  const userData = UserData();
-  const [profile, setProfile] = useState(null);
+// ─── Helpers ────────────────────────────────────────────────────────────────
+function relativeTime(iso) {
+  if (!iso) return '';
+  const diff = (Date.now() - new Date(iso)) / 1000;
+  if (diff < 60)       return 'maintenant';
+  if (diff < 3600)     return `${Math.floor(diff / 60)}min`;
+  if (diff < 86400)    return `${Math.floor(diff / 3600)}h`;
+  if (diff < 604800)   return `${Math.floor(diff / 86400)}j`;
+  return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+}
+
+// ─── Skeleton row ───────────────────────────────────────────────────────────
+function SkeletonRow() {
+  return (
+    <div className="msg-conv-row msg-conv-row--skel">
+      <div className="msg-skel msg-skel--avatar" />
+      <div className="msg-conv-body">
+        <div className="msg-skel msg-skel--name" />
+        <div className="msg-skel msg-skel--preview" />
+      </div>
+    </div>
+  );
+}
+
+// ─── Component ──────────────────────────────────────────────────────────────
+export default function CustomerMessages() {
+  const userData        = UserData();
+  const navigate        = useNavigate();
+
+  const [profile,       setProfile]       = useState(null);
   const [conversations, setConversations] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [isFetching, setIsFetching] = useState(false);
-  const [error, setError] = useState(null);
-  const [hasMore, setHasMore] = useState(true);
-  const [page, setPage] = useState(1);
-  const axios = apiInstance;
-  const navigate = useNavigate();
+  const [search,        setSearch]        = useState('');
+  const [loading,       setLoading]       = useState(true);
+  const [error,         setError]         = useState(null);
 
-  const fetchUserProfile = useCallback(async () => {
-    try {
-      const res = await axios.get(`user/profile/${userData?.user_id}/`);
-      setProfile(res.data);
-      return res.data;
-    } catch (err) {
-      setError("Erreur chargement profil");
-      setLoading(false);
-    }
+  const pollingRef = useRef(null);
+
+  // ── Fetch profile ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!userData?.user_id) return;
+    apiInstance.get(`user/profile/${userData.user_id}/`)
+      .then(r => setProfile(r.data))
+      .catch(() => {});
   }, [userData?.user_id]);
 
-  const fetchConversations = useCallback(async (userId, currentPage) => {
-    setIsFetching(true);
+  // ── Fetch conversations ────────────────────────────────────────────────────
+  const fetchConversations = useCallback(async (userId) => {
+    if (!userId) return;
     try {
-      const res = await axios.get("conversations/user/", {
-        params: { user_id: userId, page: currentPage },
+      const res = await apiInstance.get('conversations/user/', {
+        params: { user_id: userId },
       });
-      if (currentPage === 1) {
-        // Remplace toute la liste si c'est un refresh auto
-        setConversations(res.data);
-        console.log(res.data)
-      } else {
-        // Sinon pour le scroll infini, ajoute uniquement les nouvelles
-        setConversations((prev) => {
-          const existingIds = new Set(prev.map(c => c.id));
-          const newConvs = res.data.filter(c => !existingIds.has(c.id));
-          return [...prev, ...newConvs];
-        });
-      }
-      setHasMore(res.data.length > 0);
-      setIsFetching(false);
-    } catch (err) {
-      setError("Erreur chargement conversations");
-      setIsFetching(false);
+      setConversations(res.data || []);
+    } catch {
+      setError('Impossible de charger les conversations.');
     }
   }, []);
 
   useEffect(() => {
-    const loadEverything = async () => {
-      const userProfile = await fetchUserProfile();
-      if (userProfile?.id) await fetchConversations(userProfile.id, page);
-      setLoading(false);
+    if (!userData?.user_id) { setError('Non connecté.'); setLoading(false); return; }
+    fetchConversations(userData.user_id).finally(() => setLoading(false));
+  }, [userData?.user_id, fetchConversations]);
+
+  // ── Smart polling: 15s (list doesn't need 1s) ─────────────────────────────
+  useEffect(() => {
+    if (!userData?.user_id) return;
+
+    const start = () => {
+      pollingRef.current = setInterval(() => {
+        if (!document.hidden) fetchConversations(userData.user_id);
+      }, 15000);
     };
-    if (userData?.user_id) loadEverything();
-    else {
-      setError("Aucun user_id détecté.");
-      setLoading(false);
-    }
-  }, [userData?.user_id, fetchUserProfile, fetchConversations, page]);
-
-  const handleScroll = useCallback(() => {
-    if (
-      window.innerHeight + window.scrollY >= document.documentElement.offsetHeight - 100 &&
-      !isFetching &&
-      hasMore
-    ) {
-      setPage((p) => p + 1);
-    }
-  }, [isFetching, hasMore]);
-
-  useEffect(() => {
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [handleScroll]);
-
-  // Rafraîchissement automatique toutes les secondes
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (userData?.user_id && profile?.id) {
-        fetchConversations(profile.id, 1); // reload page 1
+    const onVisibility = () => {
+      if (document.hidden) {
+        clearInterval(pollingRef.current);
+      } else {
+        fetchConversations(userData.user_id);
+        start();
       }
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [userData?.user_id, profile?.id, fetchConversations]);
+    };
+    start();
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      clearInterval(pollingRef.current);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [userData?.user_id, fetchConversations]);
 
-  const goBack = () => navigate(-1);
+  // ── Filter ─────────────────────────────────────────────────────────────────
+  const filtered = conversations.filter(c =>
+    (c.vendor_name || '').toLowerCase().includes(search.toLowerCase())
+  );
 
-  if (loading) return <div className="loading-text">Chargement…</div>;
-  if (error) return <div className="error-text">{error}</div>;
-
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="chat-page">
+    <div className="msg-page">
 
       {/* Top bar */}
-      <div className="chat-top-bar">
-        <span onClick={goBack} style={{ cursor: "pointer" }}>←</span>
-        <h4>Mes Messages</h4>
-        <div />
+      <div className="msg-topbar">
+        <button className="msg-back-btn" onClick={() => navigate(-1)} aria-label="Retour">
+          <i className="fas fa-arrow-left" />
+        </button>
+        <span className="msg-topbar-title">Messages</span>
+        <div className="msg-topbar-right" />
       </div>
 
-      {/* Conversations */}
-      <div className="chat-content">
-        {conversations.length > 0 ? (
-          conversations.map((conv) => (
+      {/* Search */}
+      <div className="msg-search-wrap">
+        <i className="fas fa-search msg-search-icon" />
+        <input
+          className="msg-search"
+          type="text"
+          placeholder="Rechercher une boutique…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+        {search && (
+          <button className="msg-search-clear" onClick={() => setSearch('')}>
+            <i className="fas fa-times" />
+          </button>
+        )}
+      </div>
+
+      {/* Conversation list */}
+      <div className="msg-list">
+        {loading ? (
+          Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)
+        ) : error ? (
+          <div className="msg-error">
+            <i className="fas fa-exclamation-circle" />
+            <p>{error}</p>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="msg-empty">
+            <i className="fas fa-comment-slash" />
+            <p>{search ? 'Aucun résultat' : 'Aucune conversation'}</p>
+            {!search && (
+              <span className="msg-empty-hint">
+                Visitez une boutique et appuyez sur "Message" pour démarrer.
+              </span>
+            )}
+          </div>
+        ) : (
+          filtered.map(conv => (
             <Link
               to={`/customer/chat/${conv.id}`}
               key={conv.id}
-              className="conversation-card"
+              className={`msg-conv-row${conv.unread_count > 0 ? ' msg-conv-row--unread' : ''}`}
             >
-              <img
-                src={
-                  conv.vendor_image
-                    ? `${SERVER_URL}${conv.vendor_image}`
-                    : "/default-avatar.png"
+              {/* Avatar */}
+              <div className="msg-avatar-wrap">
+                {conv.vendor_image
+                  ? <img src={conv.vendor_image} className="msg-avatar" alt={conv.vendor_name} />
+                  : <div className="msg-avatar msg-avatar--placeholder">
+                      {(conv.vendor_name || '?')[0].toUpperCase()}
+                    </div>
                 }
-                alt=""
-                className="conversation-avatar"
-              />
-              <div className="conversation-info">
-                <h5>{conv.vendor_name || "Boutique inconnue"}</h5>
+              </div>
+
+              {/* Body */}
+              <div className="msg-conv-body">
+                <div className="msg-conv-head">
+                  <span className="msg-conv-name">{conv.vendor_name || 'Boutique'}</span>
+                  <span className="msg-conv-time">{relativeTime(conv.last_message_time)}</span>
+                </div>
+                <div className="msg-conv-foot">
+                  <span className="msg-conv-preview">
+                    {conv.last_message || 'Nouvelle conversation'}
+                  </span>
+                  {conv.unread_count > 0 && (
+                    <span className="msg-unread-badge">{conv.unread_count > 99 ? '99+' : conv.unread_count}</span>
+                  )}
+                </div>
               </div>
             </Link>
           ))
-        ) : (
-          <p className="no-msg">Aucune conversation</p>
         )}
-
-        {/* {isFetching && <div className="loading-text">Chargement…</div>} */}
-        {!hasMore && <div className="no-msg">Plus de messages</div>}
       </div>
     </div>
   );
-};
-
-export default CustomerMessages;
+}

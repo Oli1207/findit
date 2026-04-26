@@ -17,6 +17,7 @@ import { subscribeUserToPush } from "../../utils/push";
 import { syncReviewsIfOnline } from "./ReviewOffline";
 import { useSwipeable } from "react-swipeable";
 import BottomBar from "./BottomBar";
+import ProductSlider from "./ProductSlider";
 
 const Solde = () => {
   const [profileData, setProfileData] = useState(null);
@@ -612,396 +613,261 @@ const handleCloseCommentOverlay = () => {
     },
     trackMouse: true,
   });
+  const handleReviewStatsChange = (productId, stats) => {
+  setProducts((prev) =>
+    prev.map((p) =>
+      p.id === productId
+        ? { ...p, rating: stats.rating, rating_count: stats.rating_count }
+        : p
+    )
+  );
+};
 
   // fin vidéo
   if (loading) {
-  return (
-    <div className="loading-spinner">
-      <i style={{color:"#DF468F"}} className="fas fa-spinner fa-spin fa-3x"></i>
-    </div>
-  );
-}
+    return (
+      <div className="loading-spinner">
+        <i style={{ color: "#FF6B35" }} className="fas fa-spinner fa-spin fa-3x" />
+        <span>Chargement des soldes…</span>
+      </div>
+    );
+  }
 
   return (
     <div className="app-container">
-      {/* <ReloadPrompt/> */}
       <InstallButton />
-      {/* Top navigation */}
-      <div className="top-bar">
-        <div className="tabs">
-          
-            <span className="active">Solde</span>
 
-          <Link to="/suivis" className="text-decoration-none text-white">
-            <span>Suivis </span>
-          </Link>
-          {/* <span className="active">Accueil</span> */}
+      {/* ── Top bar Solde ── */}
+      <div className="top-bar">
+        <div className="top-tabs">
+          <span className="tab-pill active">🔥 Solde</span>
+          <Link to="/" className="brand-center">find<span>IT</span></Link>
+          <Link to="/suivis" className="tab-pill">Suivis</Link>
         </div>
-        <div className="search-icon">
-          <Link to="/search" className="text-decoration-none text-white">
-            <i class="fas fa-search"></i>
+        <div className="top-bar-right">
+          <Link to="/search" className="top-icon-btn">
+            <i className="fas fa-search" />
           </Link>
         </div>
       </div>
 
-      {/* Feed */}
+      {/* ── Feed ── */}
       <div className="feed-container">
-            {products.map((item, index) => (
-              <div
-                className="feed-item"
-                data-id={`${item.type}-${item.id}`}
-                key={`${item.type}-${item.id}`}
-              >
-                {/* Si c'est un produit */}
-                {item.type === "product" ? (
-                  <>
-                    <div className="feed-image">
-                      <div
-                        {...handlers}
-                        className="feed-slider"
-                        style={{
-                          display: "flex",
-                          transform: `translateX(-${
-                            (selectedIndex[item.id] || 0) * 100
-                          }%)`,
-                          transition: "transform 0.3s ease",
-                          width: "100%",
-                          height: "100%",
-                        }}
-                      >
-                        {[item.image, ...(item.gallery || [])].map(
-                          (img, imgIndex) => (
-                            <img
-                              key={imgIndex}
-                              src={img}
-                              className="feed-slide-image"
-                              alt={item.title}
-                              style={{
-                                minWidth: "100%",
-                                height: "100%",
-                                objectFit: "cover",
-                              }}
-                            />
-                          )
-                        )}
-                      </div>
-    
-                      {/* Points de navigation */}
-                      <div
-                        className="feed-dots"
-                        style={{
-                          position: "absolute",
-                          bottom: "10px",
-                          left: "50%",
-                          transform: "translateX(-50%)",
-                          display: "flex",
-                          gap: "5px",
-                          zIndex: "10",
-                        }}
-                      >
-                        {[item.image, ...(item.gallery || [])].map(
-                          (_, imgIndex) => (
-                            <span
-                              key={imgIndex}
-                              className={`feed-dot ${
-                                (selectedIndex[item.id] || 0) === imgIndex
-                                  ? "active"
-                                  : ""
-                              }`}
-                              onClick={() =>
-                                setSelectedIndex((prev) => ({
-                                  ...prev,
-                                  [item.id]: imgIndex,
-                                }))
-                              }
-                              style={{
-                                width: "8px",
-                                height: "8px",
-                                borderRadius: "50%",
-                                background:
-                                  (selectedIndex[item.id] || 0) === imgIndex
-                                    ? "white"
-                                    : "rgba(255,255,255,0.5)",
-                                cursor: "pointer",
-                              }}
-                            />
-                          )
-                        )}
-                      </div>
-                    </div>
-    
-                    <div className="info">
+        {products.length === 0 ? (
+          <div className="feed-item" style={{ justifyContent: "center", alignItems: "center" }}>
+            <div style={{ textAlign: "center", color: "rgba(255,255,255,0.5)", padding: "40px 24px" }}>
+              <span style={{ fontSize: 52, display: "block", marginBottom: 16 }}>🏷️</span>
+              <p style={{ fontSize: 16, color: "rgba(255,255,255,0.7)", fontWeight: 600, marginBottom: 8 }}>
+                Aucun article en solde
+              </p>
+              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>
+                Reviens bientôt, les bonnes affaires arrivent !
+              </p>
+            </div>
+          </div>
+        ) : (
+          products.map((item, index) => (
+            <div
+              className="feed-item"
+              data-id={`${item.type}-${item.id}`}
+              key={`${item.type}-${item.id}`}
+            >
+              {item.type === "product" ? (
+                /* ── Carte produit solde ── */
+                <>
+                  <ProductSlider item={item} />
+                  <div className="feed-gradient-top" />
+                  <div className="feed-gradient" />
+
+                  <div className="info">
+                    {/* Chip vendeur */}
+                    <div className="vendor-chip">
+                      <Link to={item.vendor?.user === userData?.user_id ? `/profile/` : `/customer/${item.vendor?.slug}/`}>
+                        <img src={item.vendor?.image} className="vendor-avatar-sm" alt={item.vendor?.name} />
+                      </Link>
                       <Link
-                        to={
-                          item.vendor?.user === userData?.user_id
-                            ? `/vendor/${item.vendor?.slug}/`
-                            : `/customer/${item.vendor?.slug}/`
-                        }
-                        style={{ fontWeight: "bold", fontSize: "15px" }}
-                        className="ms-2"
+                        to={item.vendor?.user === userData?.user_id ? `/profile/` : `/customer/${item.vendor?.slug}/`}
+                        className="vendor-name-link"
                       >
                         {item.vendor?.name}
                       </Link>
-    
-                      <h2>
-                        <Link to={`/detail/${item.slug}`}>{item.title}</Link>
-                      </h2>
-                      <p style={{ color: "white" }}>{item.description}</p>
-                      <p
-                        style={{
-                          fontSize: "15px",
-                          fontWeight: "500",
-                          color: "#DF468F",
-                        }}
-                      >
-                        {item.price} frs
-                      </p>
-                      <p>{item?.category?.title}</p>
-    
-                      {/* Spécifications */}
-                      <div className="specifications mt-2">
-                        {item.specification && item.specification.length > 0 && (
-                          <>
-                            <p
-                              onClick={() => toggleSpecification(item.id)}
-                              style={{
-                                cursor: "pointer",
-                                color: "#ffffff",
-                                fontSize: "14px",
-                                margin: 0,
-                                display: "flex",
-                                alignItems: "center",
-                              }}
-                            >
-                              <i className="fas fa-info-circle me-2" />
-                              Spécifications
-                            </p>
-    
-                            {specificationStates[item.id] && (
-                              <div
-                                className="text-white mt-2 small"
-                                style={{ maxHeight: "200px", overflowY: "auto" }}
-                              >
-                                {item.specification
-                                  .slice(0, 3)
-                                  .map((spec, index) => (
-                                    <div key={index} className="mb-1">
-                                      <strong>{spec.title}:</strong> {spec.content}
-                                    </div>
-                                  ))}
-                              </div>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </div>
-    
-                    {/* Actions */}
-                    <div className="actions">
-                      <Link
-                        to={
-                          item.vendor?.user === userData?.user_id
-                            ? `/vendor/${item.vendor?.slug}/`
-                            : `/customer/${item.vendor?.slug}/`
-                        }
-                      >
-                        <img
-                          src={item.vendor?.image}
-                          className="rounded-circle"
-                          alt={item.vendor?.name}
-                          style={{
-                            height: "40px",
-                            width: "50px",
-                            objectFit: "cover",
-                            margin: "10px",
-                          }}
-                        />
-                      </Link>
-    
                       {item.vendor?.user !== userData?.user_id && (
                         <span
-                          onClick={() =>
-                            toggleFollow(userData?.user_id, item.vendor?.id)
-                          }
-                          style={{
-                            cursor: "pointer",
-                            padding: "4px 10px",
-                            borderRadius: "15px",
-                            backgroundColor: followStates[item.vendor?.id]
-                              ? "#e0e0e0"
-                              : "#007bff",
-                            color: followStates[item.vendor?.id] ? "#333" : "#fff",
-                            fontSize: "12px",
-                            fontWeight: 500,
-                            marginLeft: "10px",
-                          }}
+                          className={`follow-chip${followStates[item.vendor?.id] ? " following" : ""}`}
+                          onClick={() => toggleFollow(userData?.user_id, item.vendor?.id)}
                         >
-                          {followStates[item.vendor?.id] ? (
-                            ""
-                          ) : (
-                            <i className="fas fa-plus" />
-                          )}
+                          {followStates[item.vendor?.id] ? "Abonné" : "+ Suivre"}
                         </span>
                       )}
-    
-                      <div className="action-btn">
+                    </div>
+
+                    <h2><Link to={`/detail/${item.slug}`}>{item.title}</Link></h2>
+                    <p>{item.description}</p>
+
+                    {/* Prix avec badge de réduction */}
+                    <div className="price-row">
+                      {item.solde && item.old_price && Number(item.old_price) > Number(item.price) ? (
+                        <>
+                          <span className="price-old">
+                            {Math.round(Number(item.old_price)).toLocaleString("fr-FR")} frs
+                          </span>
+                          <span className="solde-pct-badge">
+                            -{Math.round((1 - Number(item.price) / Number(item.old_price)) * 100)}%
+                          </span>
+                        </>
+                      ) : null}
+                      <span className="price-current">
+                        {Math.round(Number(item.price)).toLocaleString("fr-FR")} frs
+                      </span>
+                    </div>
+
+                    {/* CTA Acheter — variante solde */}
+                    <div className="feed-cta-row">
+                      <button className="feed-buy-btn solde" onClick={() => handleOrderClick(item)}>
+                        <i className="fas fa-shopping-bag" /> Acheter
+                      </button>
+                      <button className="feed-wishlist-btn" onClick={() => addToWishList(item.id)}>
+                        <i className="fas fa-heart" />
+                      </button>
+                    </div>
+
+                    {item?.category?.title && (
+                      <span className="category-tag" style={{ marginTop: 6 }}>{item.category.title}</span>
+                    )}
+
+                    {item.specification?.length > 0 && (
+                      <div className="specifications mt-1">
+                        <p className="specs-toggle-btn" onClick={() => toggleSpecification(item.id)}>
+                          <i className="fas fa-info-circle me-1" /> Spécifications
+                        </p>
+                        {specificationStates[item.id] && (
+                          <div className="specs-content">
+                            {item.specification.slice(0, 3).map((spec, i) => (
+                              <div key={i}><strong>{spec.title}:</strong> {spec.content}</div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="actions">
+                    <div className="action-btn">
+                      <div className="action-icon-wrap">
                         <i className="fas fa-star" />
-                        <span>{item.rating ? item.rating.toFixed(1) : "0.0"}</span>
                       </div>
-                      <div
-                        className="action-btn"
-                        onClick={() => handleReviewIconClick(item)}
-                      >
+                      <span>{item.rating ? item.rating.toFixed(1) : "0.0"}</span>
+                    </div>
+                    <div className="action-btn" onClick={() => handleReviewIconClick(item)}>
+                      <div className="action-icon-wrap">
                         <i className="fas fa-comment-dots" />
-                        <span>{item.rating_count || 0}</span>
                       </div>
-                      <div
-                        className="action-btn"
-                        onClick={() => handleOrderClick(item)}
-                      >
-                        <i className="fas fa-shopping-cart" />
-                      </div>
-                      <div
-                        className="action-btn"
-                        onClick={() => handleCopyLink(item)}
-                      >
-                        <i className="fas fa-link" />
-                      </div>
+                      <span>{item.rating_count || 0}</span>
                     </div>
-                  </>
-                ) : (
-                  // Si c’est une présentation vidéo
-                  <div
-                    className="feed-item"
-                    data-id={`${item.type}-${item.id}`}
-                    key={`${item.type}-${item.id}`}
-                  >
-                    <video
-                      ref={(el) => setVideoRef(el, index)}
-                      autoPlay
-                      src={item.video}
-                      className="feed-image"
-                      muted
-                      loop
-                      playsInline
-                      onClick={(e) => {
-                        const video = e.target;
-                        if (video.paused) {
-                          video.play();
-                        } else {
-                          video.pause();
-                        }
-                      }}
-                      style={{ cursor: "pointer" }}
-                    />
-    
-                    <div className="overlay"></div>
-    
-                    <div className="info">
-                      <h3 style={{ textShadow: "0 0 9px rgba(0, 0, 0, 0.6)",  color:"white"  }}>
-                        {item.vendor?.name}
-                      </h3>
-                      <h2 style={{ textShadow: "0 0 9px rgba(0, 0, 0, 0.6)", color:"white" }}>
-                        {item.title}
-                      </h2>
-                      <p style={{ textShadow: "0 0 9px rgba(0, 0, 0, 0.6)",  color:"white"  }}>
-                        {item.description}
-                      </p>
-                      {item.link && (
-                        <a href={item.link} target="_blank" rel="noreferrer">
-                          {item.link}
-                        </a>
-                      )}
-                    </div>
-    
-                    <div className="actions">
-                      <div
-                        style={{ textShadow: "0 0 4px rgba(0, 0, 0, 0.6)" }}
-                        className="action-btn"
-                        onClick={() => handleLike(item.id)}
-                      >
-                        <i className="fas fa-heart" /> {item.likes_count}
-                      </div>
-                      <div
-                        style={{ textShadow: "0 0 4px rgba(0, 0, 0, 0.6)" }}
-                        className="action-btn"
-                        onClick={() => handleCommentIconClick(item)}
-                      >
-                        <i className="fas fa-comment-dots"></i>{" "}
-                        <span>{item.comments?.length || 0}</span>
-                      </div>
-                      <div
-                        style={{ textShadow: "0 0 4px rgba(0, 0, 0, 0.6)" }}
-                        className="action-btn"
-                        onClick={() => copyLink(item.id)}
-                      >
+                    <div className="action-btn" onClick={() => handleCopyLink(item)}>
+                      <div className="action-icon-wrap">
                         <i className="fas fa-link" />
                       </div>
                     </div>
                   </div>
-                )}
-              </div>
-            ))}
-          </div>
-    
+                </>
+              ) : (
+                /* ── Carte vidéo ── */
+                <div
+                  className="feed-item"
+                  data-id={`${item.type}-${item.id}`}
+                  key={`${item.type}-${item.id}`}
+                >
+                  <video
+                    ref={(el) => setVideoRef(el, index)}
+                    autoPlay
+                    src={item.video}
+                    className="feed-image"
+                    muted
+                    loop
+                    playsInline
+                    onClick={(e) => {
+                      const v = e.target;
+                      v.paused ? v.play() : v.pause();
+                    }}
+                    style={{ cursor: "pointer" }}
+                  />
+                  <div className="feed-gradient-top" />
+                  <div className="feed-gradient" />
 
-      {/* Bottom navigation */}
-     <BottomBar />
+                  <div className="info">
+                    <p style={{ fontWeight: 700, fontSize: "14px", marginBottom: "4px" }}>{item.vendor?.name}</p>
+                    <h2 style={{ marginBottom: "6px" }}>{item.title}</h2>
+                    <p>{item.description}</p>
+                    {item.link && (
+                      <a href={item.link} target="_blank" rel="noreferrer" style={{ color: "#FF6B35", fontSize: "12px" }}>
+                        {item.link}
+                      </a>
+                    )}
+                  </div>
 
-      {/* Review overlay */}
+                  <div className="actions">
+                    <div className="action-btn" onClick={() => handleLike(item.id)}>
+                      <div className="action-icon-wrap heart-btn">
+                        <i className="fas fa-heart" />
+                      </div>
+                      <span>{item.likes_count || 0}</span>
+                    </div>
+                    <div className="action-btn" onClick={() => handleCommentIconClick(item)}>
+                      <div className="action-icon-wrap">
+                        <i className="fas fa-comment-dots" />
+                      </div>
+                      <span>{item.comments?.length || 0}</span>
+                    </div>
+                    <div className="action-btn" onClick={() => copyLink(item.id)}>
+                      <div className="action-icon-wrap">
+                        <i className="fas fa-link" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+
+      <BottomBar />
+
+      {/* ── Overlay avis ── */}
       {selectedProduct && (
         <div className="review-overlay">
           <div className="review-panel">
-            <button className="btn-close" onClick={handleCloseReview}>
-              &times;
-            </button>
-            <Review product={selectedProduct} userData={userData} />
+            <button className="btn-close" onClick={handleCloseReview}>&times;</button>
+            <Review product={selectedProduct} userData={userData} onReviewStatsChange={handleReviewStatsChange} />
           </div>
         </div>
       )}
+
+      {/* ── Overlay commande ── */}
       {orderProduct && (
         <div className="review-overlay">
           <div className="review-panel">
-            <button className="btn-close" onClick={handleCloseOrder}>
-              &times;
-            </button>
+            <button className="btn-close" onClick={handleCloseOrder}>&times;</button>
             <h4 className="mb-3">{orderProduct.title}</h4>
-            {/* Variations */}
+
             <div className="mb-3">
-              <label>
-                <b>Quantité :</b>
-              </label>
-              <input
-                type="number"
-                className="form-control"
-                value={qtyValue}
-                min="1"
-                onChange={handleQtyChange}
-              />
+              <label><b>Quantité :</b></label>
+              <input type="number" className="form-control" value={qtyValue} min="1" onChange={handleQtyChange} />
             </div>
+
             {orderProduct.size?.length > 0 && (
               <div className="mb-3">
                 <label className="d-flex align-items-center gap-2">
                   <b>Taille :</b>
-                  <span>
-                    {selectedSize[orderProduct.id]
-                      ? selectedSize[orderProduct.id]
-                      : "Aucune"}
-                  </span>
+                  <span>{selectedSize[orderProduct.id] || "Aucune"}</span>
                 </label>
-
                 <div className="d-flex flex-wrap gap-2 mt-2">
-                  {orderProduct.size.map((size, index) => (
+                  {orderProduct.size.map((size, i) => (
                     <button
-                      key={index}
-                      onClick={() =>
-                        handleSizeButtonClick(orderProduct.id, size.name)
-                      }
-                      className={`btn btn-sm ${
-                        selectedSize[orderProduct.id] === size.name
-                          ? "btn-primary"
-                          : "btn-outline-primary"
-                      }`}
+                      key={i}
+                      onClick={() => handleSizeButtonClick(orderProduct.id, size.name)}
+                      className={`btn btn-sm ${selectedSize[orderProduct.id] === size.name ? "btn-primary" : "btn-outline-primary"}`}
                     >
                       {size.name}
                     </button>
@@ -1014,218 +880,110 @@ const handleCloseCommentOverlay = () => {
               <div className="mb-3">
                 <label className="d-flex align-items-center gap-2">
                   <b>Couleur :</b>
-
-                  {/* ✅ Cercle coloré + nom ou code affiché */}
                   {selectedColors[orderProduct.id] ? (
                     <>
-                      <div
-                        style={{
-                          width: "20px",
-                          height: "20px",
-                          borderRadius: "50%",
-                          backgroundColor: selectedColors[orderProduct.id],
-                          border: "1px solid #ccc",
-                        }}
-                      ></div>
+                      <div style={{ width: 20, height: 20, borderRadius: "50%", backgroundColor: selectedColors[orderProduct.id], border: "1px solid #ccc" }} />
                       <span>{selectedColors[orderProduct.id]}</span>
                     </>
-                  ) : (
-                    <span>Aucune</span>
-                  )}
+                  ) : <span>Aucune</span>}
                 </label>
-
                 <div className="d-flex flex-wrap gap-2 mt-2">
-                  {orderProduct.color.map((color, index) => (
+                  {orderProduct.color.map((color, i) => (
                     <button
-                      key={index}
+                      key={i}
                       className="btn btn-sm p-3"
                       style={{
                         backgroundColor: color.color_code,
-                        border:
-                          selectedColors[orderProduct.id] === color.color_code
-                            ? "2px solid black"
-                            : "1px solid #ccc",
+                        border: selectedColors[orderProduct.id] === color.color_code ? "2px solid black" : "1px solid #ccc",
                       }}
-                      onClick={() =>
-                        handleColorButtonClick(
-                          orderProduct.id,
-                          color.color_code
-                        )
-                      }
+                      onClick={() => handleColorButtonClick(orderProduct.id, color.color_code)}
                     />
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Utiliser mon adresse */}
-            {profileData?.mobile &&
-            profileData?.address &&
-            profileData?.city ? (
+            {profileData?.mobile && profileData?.address && profileData?.city ? (
               <div className="form-check my-3">
-                <input
-                  className="form-check-input"
-                  type="checkbox"
-                  id="useProfileAddress"
-                  checked={useProfileAddress}
-                  onChange={(e) => setUseProfileAddress(e.target.checked)}
-                />
-                <label className="form-check-label" htmlFor="useProfileAddress">
-                  Utiliser mon adresse enregistrée
-                </label>
+                <input className="form-check-input" type="checkbox" id="useProfileAddress"
+                  checked={useProfileAddress} onChange={(e) => setUseProfileAddress(e.target.checked)} />
+                <label className="form-check-label" htmlFor="useProfileAddress">Utiliser mon adresse enregistrée</label>
               </div>
             ) : null}
-            {/* /* Si décoché ou adresse inexistante → champs personnalisés  */}
-            {(!useProfileAddress ||
-              !profileData?.mobile ||
-              !profileData?.address ||
-              !profileData?.city) && (
+
+            {(!useProfileAddress || !profileData?.mobile || !profileData?.address || !profileData?.city) && (
               <div>
                 <div className="mb-2">
                   <label>Téléphone</label>
-                  <input
-                    className="form-control"
-                    value={customAddress.mobile}
-                    onChange={(e) =>
-                      setCustomAddress({
-                        ...customAddress,
-                        mobile: e.target.value,
-                      })
-                    }
-                    type="text"
-                  />
+                  <input className="form-control" value={customAddress.mobile} type="text"
+                    onChange={(e) => setCustomAddress({ ...customAddress, mobile: e.target.value })} />
                 </div>
                 <div className="mb-2">
                   <label>Adresse</label>
-                  <input
-                    className="form-control"
-                    value={customAddress.address}
-                    onChange={(e) =>
-                      setCustomAddress({
-                        ...customAddress,
-                        address: e.target.value,
-                      })
-                    }
-                    type="text"
-                  />
+                  <input className="form-control" value={customAddress.address} type="text"
+                    onChange={(e) => setCustomAddress({ ...customAddress, address: e.target.value })} />
                 </div>
                 <div className="mb-2">
                   <label>Ville</label>
-                  <input
-                    className="form-control"
-                    value={customAddress.city}
-                    onChange={(e) =>
-                      setCustomAddress({
-                        ...customAddress,
-                        city: e.target.value,
-                      })
-                    }
-                    type="text"
-                  />
+                  <input className="form-control" value={customAddress.city} type="text"
+                    onChange={(e) => setCustomAddress({ ...customAddress, city: e.target.value })} />
                 </div>
               </div>
             )}
-            {/* Boutons actions */}
-            <button
-              className="btn btn-primary w-100 my-2"
-              onClick={() =>
-                handlePlaceOrder(
-                  orderProduct?.id,
-                  orderProduct?.price,
-                  orderProduct.vendor?.id
-                )
-              }
-            >
-              <i className="fas fa-shopping-cart me-2" />
-              Commander
+
+            <button className="btn btn-primary w-100 my-2"
+              onClick={() => handlePlaceOrder(orderProduct?.id, orderProduct?.price, orderProduct.vendor?.id)}>
+              <i className="fas fa-shopping-cart me-2" /> Commander
             </button>
-            <button
-              className="btn btn-outline-danger w-100"
-              onClick={() => addToWishList(orderProduct.id)}
-            >
-              <i className="fas fa-heart me-2" />
-              Ajouter en wishlist
+            <button className="btn btn-outline-danger w-100" onClick={() => addToWishList(orderProduct.id)}>
+              <i className="fas fa-heart me-2" /> Ajouter en wishlist
             </button>
           </div>
         </div>
       )}
+
+      {/* ── Overlay commentaires vidéo ── */}
       {selectedPresentation && (
-  <div className="review-overlay">
-    <div className="review-panel">
-      <button className="btn-close" onClick={handleCloseCommentOverlay}>
-        &times;
-      </button>
-      <h4 className="mb-3">Commentaires</h4>
+        <div className="review-overlay">
+          <div className="review-panel">
+            <button className="btn-close" onClick={handleCloseCommentOverlay}>&times;</button>
+            <h4 className="mb-3">Commentaires</h4>
 
-      {/* Liste des commentaires */}
-      <div className="mb-3" style={{ maxHeight: "300px", overflowY: "auto", color: "black" }}>
-        {selectedPresentation.comments
-          .filter((comment) => comment.parent === null)
-          .map((comment) => (
-            <div key={comment.id}>
-              <b>{comment.display_name}</b> : {comment.content}
-              <button
-                className="btn btn-sm btn-link"
-                onClick={() => setReplyingTo(comment.id)}
-              >
-                Répondre
-              </button>
-              {/* Réponses */}
-              {comment?.replies.map((reply) => (
-                <div key={reply.id} style={{ marginBottom: "20px", marginLeft: "20px", fontStyle: "italic" }}>
-                  ↳ <b>{reply.display_name}</b> : {reply.content}
-                </div>
-              ))}
-              {/* Formulaire de réponse */}
-              {replyingTo === comment.id && (
-                <div className="d-flex gap-2 my-1">
-                  <input
-                    type="text"
-                    placeholder="Votre réponse"
-                    className="form-control"
-                    value={replyValue}
-                    onChange={(e) => setReplyValue(e.target.value)}
-                  />
-                  <button
-                    className="btn btn-success"
-                    onClick={() =>
-                      replyValue.trim() &&
-                      handleComment(selectedPresentation.id, replyValue, comment.id)
-                    }
-                  >
-                    Envoyer
-                  </button>
-                </div>
-              )}
+            <div className="mb-3" style={{ maxHeight: "300px", overflowY: "auto", color: "black" }}>
+              {selectedPresentation.comments
+                .filter((c) => c.parent === null)
+                .map((comment) => (
+                  <div key={comment.id}>
+                    <b>{comment.display_name}</b> : {comment.content}
+                    <button className="btn btn-sm btn-link" onClick={() => setReplyingTo(comment.id)}>Répondre</button>
+                    {comment?.replies.map((reply) => (
+                      <div key={reply.id} style={{ marginBottom: 20, marginLeft: 20, fontStyle: "italic" }}>
+                        ↳ <b>{reply.display_name}</b> : {reply.content}
+                      </div>
+                    ))}
+                    {replyingTo === comment.id && (
+                      <div className="d-flex gap-2 my-1">
+                        <input type="text" placeholder="Votre réponse" className="form-control"
+                          value={replyValue} onChange={(e) => setReplyValue(e.target.value)} />
+                        <button className="btn btn-success"
+                          onClick={() => replyValue.trim() && handleComment(selectedPresentation.id, replyValue, comment.id)}>
+                          Envoyer
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
             </div>
-          ))}
-      </div>
 
-      {/* Ajouter un commentaire principal */}
-      <div className="d-flex gap-2">
-        <input
-          type="text"
-          placeholder="Votre commentaire"
-          className="form-control"
-          value={commentValue}
-          onChange={(e) => setCommentValue(e.target.value)}
-        />
-        <button
-          className="btn btn-primary"
-          onClick={() =>
-            commentValue.trim() &&
-            handleComment(selectedPresentation.id, commentValue)
-          }
-        >
-          Envoyer
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-   {products < 1 && (
-        <div className="feed-container">
-        <h5 style={{marginTop:"30px", fontSize: "16px"}} className="p-3">Il n'y a pas de produit en solde pour le moment.</h5>
+            <div className="d-flex gap-2">
+              <input type="text" placeholder="Votre commentaire" className="form-control"
+                value={commentValue} onChange={(e) => setCommentValue(e.target.value)} />
+              <button className="btn btn-primary"
+                onClick={() => commentValue.trim() && handleComment(selectedPresentation.id, commentValue)}>
+                Envoyer
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

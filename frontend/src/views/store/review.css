@@ -1,0 +1,218 @@
+/* =================================================================
+   A. STYLES EXTERNES (Définis dans TikTokFeed.jsx)
+   Gestion de l'Overlay (Fond et panneau de glissement)
+   ================================================================= */
+
+/* 1. Le fond d'écran (Backdrop) */
+.review-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10000;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: flex-end; /* Monte le panneau depuis le bas */
+}
+
+/* 2. Le panneau de contenu (la boîte blanche) */
+.review-panel {
+    background-color: white;
+    width: 100%;
+    max-width: 600px; /* Limite la largeur sur desktop */
+    height: 95vh; /* 85% de la hauteur de l'écran pour le style mobile */
+    max-height: 95vh;
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
+    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column; 
+    position: relative;
+    padding: 0; 
+}
+
+/* 3. Bouton de fermeture (Positionnement) */
+.review-panel .btn-close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    z-index: 10;
+    opacity: 0.7;
+    font-size: 1.5rem;
+    color: #333;
+    border: none;
+    background: none;
+}
+
+/* =================================================================
+   B. STYLES INTERNES (Définis dans Review.jsx) - Préfixe rv-
+   ================================================================= */
+
+/* Conteneur principal dans Review.jsx (prend toute la hauteur du review-panel) */
+.rv-container {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    height: 100%; 
+    padding-top: 50px; /* Espace réservé pour le bouton de fermeture/titre */
+}
+
+/* Le conteneur scrollable des avis */
+.rv-scroll-container {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 0 20px; /* Padding horizontal pour les avis */
+}
+
+/* Titre des avis */
+.rv-list-section h2 {
+    font-size: 1.1em;
+    font-weight: 700;
+    color: #333;
+    padding-bottom: 8px;
+    margin-bottom: 15px;
+    margin-top: 0;
+    border-bottom: 1px solid #f0f0f0;
+    text-align: center;
+}
+
+/* --- Item individuel d'avis --- */
+.rv-item {
+    padding: 10px 0;
+    border-bottom: 1px solid #f9f9f9;
+}
+
+.rv-header {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 5px;
+}
+
+.rv-avatar {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-right: 10px;
+    flex-shrink: 0;
+}
+
+.rv-info {
+    flex-grow: 1;
+    margin-right: 15px;
+}
+
+.rv-username {
+    font-size: 0.9em;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+}
+
+.rv-date {
+    font-size: 0.75em;
+    color: #999;
+    margin: 0;
+}
+
+/* Texte de l'avis */
+.rv-text {
+    font-size: 0.9em;
+    color: #555;
+    margin-top: 5px;
+    padding-left: 45px; /* Aligne le texte après l'avatar */
+    line-height: 1.4;
+}
+
+/* Étoiles du Rating */
+.rv-rating-stars {
+    font-size: 0.8em;
+    color: #ffc107;
+    margin-left: 10px;
+    flex-shrink: 0;
+}
+
+.rv-rating-stars .empty {
+    color: #e0e0e0;
+}
+
+.rv-empty-text {
+    text-align: center;
+    color: #999;
+    padding: 20px;
+}
+/* =================================================================
+   C. FORMULAIRE FIXE EN BAS (rv-footer-form)
+   ================================================================= */
+
+.rv-footer-form {
+    padding: 10px 20px;
+    border-top: 1px solid #f0f0f0;
+    background-color: white;
+    z-index: 5;
+    width: 100%;
+    box-sizing: border-box;
+    position: sticky;
+    bottom: 0;
+    flex-shrink: 0;
+}
+
+.rv-footer-form form {
+    display: flex;
+    flex-direction: column; /* Nouvelle structure : éléments empilés */
+    gap: 8px;
+    width: 100%;
+}
+
+/* Conteneur des étoiles et du texte */
+.rv-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px; /* Espace entre les étoiles et la zone de texte */
+}
+
+/* ⚠️ NOUVEAU: Rating Widget */
+.rv-rating-widget {
+    display: flex;
+    justify-content: flex-start; /* Aligner les étoiles à gauche */
+    align-items: center;
+    padding: 5px 0;
+}
+
+.rv-star-icon {
+    font-size: 1.4em;
+    color: #e0e0e0;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.rv-star-icon.filled {
+    color: #ffc107;
+}
+/* Fin Rating Widget */
+
+
+/* ⚠️ NOUVEAU: Textarea */
+.rv-textarea-input {
+    border-radius: 10px !important; /* Arrondis moins prononcés que le 'pill' */
+    padding: 10px 15px;
+    border: 1px solid #ddd;
+    background-color: #f9f9f9;
+    resize: none; /* Empêche l'utilisateur de redimensionner la zone */
+    font-size: 0.9em;
+    height: auto; /* La hauteur est gérée par l'attribut rows=3 */
+    width: 100%;
+    box-sizing: border-box;
+}
+/* FIN NOUVEAU: Textarea */
+
+
+.rv-submit-btn {
+    border-radius: 10px !important; /* S'aligne avec la textarea */
+    padding: 10px 15px;
+    font-weight: 600;
+    font-size: 1em;
+    flex-shrink: 0;
+}

@@ -1,113 +1,173 @@
-/* Reset base */
-html, body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  font-family: 'Inter', sans-serif;
-  background-color: white;
-  color: #fff;
+/* =========================================
+   CustomerShop.css - Professional UI
+   Prefix: cs-
+   ========================================= */
+
+:root {
+  --cs-primary: #000000;
+  --cs-secondary: #666666;
+  --cs-bg: #ffffff;
+  --cs-bg-light: #f8f9fa;
+  --cs-border: #dbdbdb;
+  --cs-accent: #DF468F; /* Couleur TikTok/Shop */
+  --cs-btn-blue: #0095f6;
 }
 
-/* Le conteneur principal prend tout l'écran */
-.shop-container {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background: white;
+/* Utilitaires */
+.cs-hide-scroll::-webkit-scrollbar { display: none; }
+.cs-hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+.cs-container a { text-decoration: none; color: inherit; }
+
+.cs-container {
+  max-width: 900px;
+  margin: 0 auto;
+  background: var(--cs-bg);
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  padding-bottom: 80px;
 }
 
-/* Top bar Insta style */
-.shop-top-bar {
-  height: 55px;
-  display: flex;
-  align-items: center;
-  padding: 0 12px;
-  background: #fff;
+/* --- HEADER --- */
+.cs-header { padding: 15px 20px; border-bottom: 1px solid var(--cs-border); }
+.cs-top-nav { display: flex; justify-content: space-between; align-items: center; font-size: 1.2rem; margin-bottom: 20px; }
+.cs-back-btn { cursor: pointer; padding: 5px; font-size: 1.5rem; }
+
+.cs-profile-section { display: flex; align-items: center; gap: 20px; }
+.cs-avatar { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 1px solid var(--cs-border); }
+
+.cs-profile-info { flex: 1; }
+.cs-username { font-size: 1.3rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 5px; }
+.cs-verified { color: var(--cs-btn-blue); font-size: 0.9rem; }
+.cs-bio { font-size: 0.9rem; color: var(--cs-secondary); margin-top: 5px; line-height: 1.4; }
+
+/* Boutons d'action (Follow / Message) */
+.cs-actions-row { display: flex; gap: 10px; margin-top: 15px; }
+
+.cs-btn-follow {
+  flex: 1;
+  background-color: var(--cs-btn-blue);
   color: white;
-  border-bottom: 0.5px solid #333;
-  flex-shrink: 0;
-}
-
-.shop-top-bar .vendor-image {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  object-fit: cover;
-  margin-right: 10px;
-}
-
-.shop-top-bar .vendor-name {
-  font-weight: 600;
-  font-size: 16px;
-  flex: 1;
-  color: #000;
-}
-
-.shop-top-bar .menu-icon {
-  font-size: 20px;
-  cursor: pointer;
-}
-
-/* Le conteneur qui scroll */
-.shop-feed-container {
-  flex: 1;
-  overflow-y: auto;
-}
-
-/* Grille façon Instagram */
-.shop-feed-grid {
-  display: flex;
-  flex-wrap: wrap;
-  padding: 0;
-  margin: 5px;
-}
-
-.shop-feed-item {
-  position: relative;
-  width: calc((100% - 2px) / 3); /* 3 par ligne + gap 1px */
-  margin-right: 1px;
-  margin-bottom: 1px;
-  background: #000;
-  overflow: hidden;
-}
-
-.shop-feed-item:nth-child(3n) {
-  margin-right: 0;
-}
-
-/* Permet d’avoir une hauteur identique à la largeur */
-.shop-feed-item::before {
-  content: "";
-  display: block;
-  padding-top: 100%;
-}
-
-.shop-feed-image {
-  position: absolute;
-  top: 0; left: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center;
-}
-.shop-tabs {
-  display: flex;
-  justify-content: space-around;
-  border-top: 0.5px solid #ccc;
-  border-bottom: 0.5px solid #ccc;
-  background: white;
-}
-
-.shop-tabs button {
-  background: none;
   border: none;
-  padding: 12px;
-  font-size: 18px;
-  color: #777;
+  padding: 8px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.cs-btn-follow.following { background-color: var(--cs-bg-light); color: black; border: 1px solid var(--cs-border); }
+
+.cs-btn-msg {
+  flex: 1;
+  background-color: var(--cs-bg-light);
+  color: black;
+  border: 1px solid var(--cs-border);
+  padding: 8px;
+  border-radius: 8px;
+  font-weight: 600;
   cursor: pointer;
 }
 
-.shop-tabs button.active {
-  color: black;
-  border-bottom: 2px solid black;
+/* --- TABS (Produits / Vidéos) --- */
+.cs-tabs { display: flex; justify-content: space-around; border-top: 1px solid var(--cs-border); border-bottom: 1px solid var(--cs-border); margin-top: 20px; }
+.cs-tab-btn { flex: 1; padding: 12px; text-align: center; cursor: pointer; font-size: 1.5rem; color: #aaa; position: relative; }
+.cs-tab-btn.active { color: var(--cs-primary); }
+.cs-tab-btn.active::after { content: ''; position: absolute; top: -1px; left: 0; width: 100%; height: 1px; background: black; }
+
+/* --- GRID LAYOUT --- */
+.cs-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
+.cs-tile { aspect-ratio: 1/1; position: relative; background: #eee; cursor: pointer; overflow: hidden; }
+.cs-tile img, .cs-tile video { width: 100%; height: 100%; object-fit: cover; transition: transform 0.2s; pointer-events: none; }
+.cs-tile:hover img { transform: scale(1.02); }
+.cs-play-icon { position: absolute; top: 10px; right: 10px; color: white; text-shadow: 0 0 2px rgba(0,0,0,0.5); }
+
+.cs-empty { grid-column: 1/-1; text-align: center; padding: 50px; color: var(--cs-secondary); }
+.cs-loading { display: flex; justify-content: center; align-items: center; height: 50vh; color: var(--cs-accent); }
+
+/* =========================================
+   LIGHTBOX & FLUX IMMERSIF (SNAP SCROLL)
+   ========================================= */
+
+.cs-modal-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: #000; z-index: 9999;
 }
+
+.cs-snap-container {
+  width: 100%; height: 100%; overflow-y: scroll;
+  scroll-snap-type: y mandatory; scroll-behavior: smooth;
+}
+
+.cs-snap-item {
+  width: 100%; height: 100dvh;
+  scroll-snap-align: start; scroll-snap-stop: always;
+  position: relative; display: flex; justify-content: center; align-items: flex-end;
+  background: #000; overflow: hidden;
+}
+
+/* Media Layer */
+.cs-media-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+.cs-media-layer .feed-image { width: 100%; height: 100%; position: absolute !important; }
+.cs-snap-video { width: 100%; height: 100%; object-fit: contain; background: black; }
+
+.cs-gradient-overlay {
+  position: absolute; width: 100%; height: 100%;
+  background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.2) 40%, transparent 100%);
+  z-index: 2; pointer-events: none;
+}
+
+/* Close Button */
+.cs-close-btn {
+  position: absolute; top: 20px; left: 20px; z-index: 1001;
+  background: rgba(0,0,0,0.4); border: none; color: white;
+  width: 40px; height: 40px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  backdrop-filter: blur(4px); font-size: 1.2rem;
+}
+
+/* Info Layer (Gauche) */
+.cs-info-layer {
+  position: absolute; bottom: 20px; left: 20px; z-index: 3;
+  max-width: 75%; color: white; padding-bottom: env(safe-area-inset-bottom);
+}
+.cs-info-layer h3 { margin: 0 0 5px; font-size: 1.1rem; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
+.cs-info-layer h2 { margin: 0 0 5px; font-size: 1rem; font-weight: 400; line-height: 1.4; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
+.cs-price { color: var(--cs-accent); font-weight: 700; font-size: 1.1rem; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
+
+/* Actions Layer (Droite) */
+.cs-actions-layer {
+  position: absolute; bottom: 80px; right: 10px; z-index: 3;
+  display: flex; flex-direction: column; gap: 20px; align-items: center;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.cs-action-btn {
+  color: white; display: flex; flex-direction: column; align-items: center; cursor: pointer; text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+}
+.cs-action-btn i { font-size: 28px; margin-bottom: 4px; }
+.cs-action-btn span { font-size: 12px; font-weight: 600; }
+
+.cs-vendor-avatar-small {
+  width: 45px; height: 45px; border-radius: 50%; border: 2px solid white; margin-bottom: 10px;
+}
+
+/* --- OVERLAYS (Commande & Panier) --- */
+.cs-review-overlay {
+  position: fixed; bottom: 0; left: 0; width: 100%; height: 100%;
+  z-index: 10000; background: rgba(0,0,0,0.5);
+  display: flex; align-items: flex-end;
+}
+.cs-review-panel {
+  background: #fff; width: 100%; max-height: 80%; overflow-y: auto;
+  border-radius: 20px 20px 0 0; padding: 20px; position: relative;
+  animation: slideUp 0.3s ease-out; color: black;
+}
+@keyframes slideUp { from {transform: translateY(100%);} to {transform: translateY(0);} }
+
+.cs-form-control { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 10px; }
+.cs-btn-primary { width: 100%; padding: 14px; background: black; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+.cs-btn-outline { width: 100%; padding: 14px; background: white; border: 1px solid black; color: black; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+
+.cs-option-btn { padding: 8px 15px; border: 1px solid #ddd; background: white; border-radius: 20px; margin-right: 5px; margin-bottom: 5px; }
+.cs-option-btn.selected { background: black; color: white; border-color: black; }
+.cs-color-dot { width: 30px; height: 30px; border-radius: 50%; display: inline-block; margin-right: 10px; border: 1px solid #ddd; cursor: pointer; }
+.cs-color-dot.selected { border: 2px solid black; transform: scale(1.1); }

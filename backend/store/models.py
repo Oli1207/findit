@@ -9,6 +9,8 @@ import cv2
 import numpy as np
 from django.urls import reverse
 from django.utils import timezone
+from django.core.validators import FileExtensionValidator
+from django.core.exceptions import ValidationError
 
 class Category(models.Model):
     title = models.CharField(max_length=100)
@@ -173,6 +175,15 @@ class CartOrder(models.Model):
         ("complete", "Complete"),
         ("annule", "Annule"),
     )
+    ESCROW_STATUS = (
+        ("pending_payment", "En attente de paiement"),
+        ("paid_holding",    "Payé – Fonds en séquestre"),
+        ("shipped",         "Expédié par le vendeur"),
+        ("validated",       "Réception validée par le client"),
+        ("released",        "Fonds reversés au vendeur"),
+        ("disputed",        "Litige ouvert"),
+        ("refunded",        "Remboursé"),
+    )
 
     buyer = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     product = models.ForeignKey(Product, on_delete=models.CASCADE, null=True, blank=True)
@@ -190,14 +201,21 @@ class CartOrder(models.Model):
     state = models.CharField(max_length=100, null=True, blank=True)
     country = models.CharField(max_length=100, null=True, blank=True)
 
-    # Statut
+    # Statut classique
     payment_status = models.CharField(choices=PAYMENT_STATUS, max_length=100, default="en_attente")
-    order_status = models.CharField(choices=ORDER_STATUS, max_length=100, default="en_attente")
-    oid = ShortUUIDField(unique=True, length=10, alphabet="abcdefghijklmnopqrstuvwxyz")
+    order_status   = models.CharField(choices=ORDER_STATUS,   max_length=100, default="en_attente")
+    oid  = ShortUUIDField(unique=True, length=10, alphabet="abcdefghijklmnopqrstuvwxyz")
     date = models.DateTimeField(auto_now_add=True)
 
+    # ── Escrow / Paystack ──────────────────────────────────────
+    escrow_status   = models.CharField(choices=ESCROW_STATUS, max_length=30, default="pending_payment")
+    validation_code = models.CharField(max_length=8,   null=True, blank=True)   # code visible par le client uniquement
+    paystack_ref    = models.CharField(max_length=200, null=True, blank=True)   # référence Paystack
+    platform_fee    = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)  # 5 %
+    vendor_amount   = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)  # 95 %
+
     def __str__(self):
-        return f"Commande {self.oid} "
+        return f"Commande {self.oid}"
     
 
 class CartOrderItem(models.Model):
@@ -270,6 +288,31 @@ def update_product_rating(sender, instance, **kwargs):
     if instance.product:
         instance.product.save()
 
+
+class VendorReview(models.Model):
+    """Avis laissé par un client sur un vendeur (profil public)."""
+    RATING = (
+        (1, "1 ★"),
+        (2, "2 ★"),
+        (3, "3 ★"),
+        (4, "4 ★"),
+        (5, "5 ★"),
+    )
+    user    = models.ForeignKey(User,   on_delete=models.CASCADE, related_name="vendor_reviews")
+    vendor  = models.ForeignKey(Vendor, on_delete=models.CASCADE, related_name="reviews")
+    rating  = models.IntegerField(choices=RATING)
+    comment = models.TextField(blank=True)
+    date    = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together    = ("user", "vendor")   # 1 avis max par user par vendeur
+        ordering           = ["-date"]
+        verbose_name_plural = "Vendor Reviews"
+
+    def __str__(self):
+        return f"{self.user} → {self.vendor.name} ({self.rating}★)"
+
+
 class Wishlist(models.Model):
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
@@ -303,16 +346,67 @@ class Coupon(models.Model):
     def __str__(self):
         return self.code
 
+
+def validate_video_size(value):
+    """
+    Limite la taille de la vidéo à ~20 Mo.
+    """
+    max_size_mb = 20
+    if value.size > max_size_mb * 1024 * 1024:
+        raise ValidationError(f"La vidéo ne doit pas dépasser {max_size_mb} Mo.")
+
 class Presentation(models.Model):
-    vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE, null=True, blank=True)
-    title = models.CharField(max_length=100, null=True, blank=True)
-    video = models.FileField(upload_to="video_de_presentation", default="video.mp4", blank=True, null=True)
-    description = models.TextField()
-    link = models.CharField(max_length=200, null=True, blank=True)
-    likes = models.ManyToManyField(User, related_name="presentation_likes", blank=True)
+    vendor = models.ForeignKey(
+        Vendor,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True
+    )
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="presentations",
+        verbose_name="Catégorie",
+    )
+    # max_length en CARACTÈRES (pas en mots)
+    title = models.CharField(
+        max_length=50,
+        null=True,
+        blank=True
+    )
+    video = models.FileField(
+        upload_to="video_de_presentation",
+        default="video.mp4",
+        blank=True,
+        null=True,
+        validators=[
+            # extensions proches de ce qu'on trouve sur TikTok / smartphones
+            FileExtensionValidator(
+                allowed_extensions=["mp4", "mov", "webm", "hevc", "h265"]
+            ),
+            validate_video_size,
+        ],
+    )
+    description = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True
+    )
+    link = models.CharField(
+        max_length=200,
+        null=True,
+        blank=True
+    )
+    likes = models.ManyToManyField(
+        User,
+        related_name="presentation_likes",
+        blank=True
+    )
 
     def __str__(self):
-        return self.title
+        return self.title or ""
 
 class Comment(models.Model):
     presentation = models.ForeignKey(Presentation, on_delete=models.CASCADE, related_name="comments")

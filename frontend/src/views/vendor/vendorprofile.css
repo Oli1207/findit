@@ -1,0 +1,766 @@
+/* =========================================
+   VendorProfile.css - Version Complète
+   ========================================= */
+
+:root {
+  --vp-primary:   #000000;
+  --vp-secondary: #666666;
+  --vp-bg-light:  #f8f9fa;
+  --vp-border:    #e5e7eb;
+  --vp-accent:    #DF468F;
+  --vp-blue:      #007bff;
+  --vp-radius:    12px;
+  --vp-success:   #059669;
+  --vp-warning:   #d97706;
+  --vp-danger:    #dc2626;
+}
+
+/*
+  CSS pour s'assurer que les notifications SweetAlert
+  apparaissent au-dessus des overlays de l'application (lightbox et commande).
+*/
+.vp-swal-toast-container {
+    z-index: 99999 !important; /* Une valeur très élevée pour être au-dessus du modal */
+}
+/* Utilitaires */
+.vp-hide-scroll::-webkit-scrollbar { display: none; }
+.vp-hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+.vp-container a { text-decoration: none; color: inherit; }
+
+/* Conteneur Principal */
+.vp-container {
+  max-width: 900px;
+  margin: 0 auto;
+  background: #fff;
+  min-height: 100vh;
+  font-family: 'Inter', 'Segoe UI', Roboto, sans-serif;
+  padding-bottom: 80px;
+}
+
+/* --- Header Section --- */
+.vp-header { padding: 16px 20px 20px; border-bottom: 1px solid var(--vp-border); background: #fff; }
+.vp-header-nav {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 18px; font-size: 1.1rem;
+}
+.vp-header-title { font-weight: 700; font-size: 1rem; }
+.vp-nav-icon {
+  cursor: pointer; padding: 8px; border-radius: 50%; color: var(--vp-primary);
+  transition: background 0.15s;
+}
+.vp-nav-icon:hover { background: var(--vp-bg-light); }
+.vp-profile-info { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+.vp-avatar {
+  width: 84px; height: 84px; border-radius: 50%; object-fit: cover;
+  border: 2px solid var(--vp-border); flex-shrink: 0;
+}
+.vp-text h2 { margin: 0; font-size: 1.2rem; font-weight: 700; }
+.vp-bio { color: var(--vp-secondary); font-size: 0.88rem; margin: 4px 0 0; line-height: 1.4; }
+
+/* Stats Row */
+.vp-stats-row {
+  display: flex; justify-content: space-around;
+  margin: 12px 0 16px; padding: 12px 0;
+  border-top: 1px solid var(--vp-border);
+  border-bottom: 1px solid var(--vp-border);
+}
+.vp-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.vp-stat-num { font-size: 1.1rem; font-weight: 700; color: var(--vp-primary); }
+.vp-stat-label { font-size: 0.75rem; color: var(--vp-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
+
+.vp-action-btn-header {
+  width: 100%; padding: 10px; background: #fff;
+  border: 1px solid var(--vp-border); border-radius: 8px;
+  font-weight: 600; cursor: pointer; font-size: 0.9rem;
+  transition: background 0.15s;
+}
+.vp-action-btn-header:hover { background: var(--vp-bg-light); }
+
+/* --- Tabs --- */
+.vp-tabs { display: flex; justify-content: space-around; border-bottom: 1px solid var(--vp-border); position: sticky; top: 0; background: white; z-index: 10; padding-top: 10px; }
+.vp-tab-btn { flex: 1; background: none; border: none; padding: 15px 0; cursor: pointer; color: var(--vp-secondary); font-size: 1.2rem; position: relative; }
+.vp-tab-btn.vp-active { color: var(--vp-primary); }
+.vp-tab-btn.vp-active::after { content: ""; position: absolute; bottom: 0; left: 25%; width: 50%; height: 2px; background-color: var(--vp-primary); }
+
+/* --- Grid --- */
+.vp-content { padding: 5px; background-color: var(--vp-bg-light); min-height: 300px; }
+.vp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
+.vp-tile { aspect-ratio: 1 / 1; overflow: hidden; position: relative; background: #eee; cursor: pointer; }
+.vp-tile img, .vp-tile video { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+/* .vp-play-icon — défini en bas du fichier avec hover */
+
+/* --- Orders List --- */
+.vp-orders-list { display: flex; flex-direction: column; gap: 12px; padding: 12px; }
+.vp-card {
+  background: white; border-radius: var(--vp-radius);
+  padding: 14px; display: flex; gap: 14px;
+  border: 1px solid var(--vp-border);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.vp-card-thumb { width: 76px; height: 76px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+.vp-card-body { flex: 1; min-width: 0; }
+.vp-card-header-row {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 4px;
+}
+.vp-card-oid { font-weight: 700; font-size: 0.9rem; color: var(--vp-primary); }
+.vp-card-title { font-size: 0.92rem; font-weight: 600; color: #111; margin: 0 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vp-card-meta {
+  display: flex; flex-direction: column; gap: 3px;
+  font-size: 0.8rem; color: var(--vp-secondary);
+}
+.vp-card-meta span { display: flex; align-items: center; gap: 6px; }
+.vp-card-meta i { width: 14px; text-align: center; color: #999; }
+.vp-card-price { margin: 8px 0 0; font-size: 0.88rem; color: #333; }
+.vp-card-price strong { color: var(--vp-primary); font-size: 0.95rem; }
+
+/* =========================================
+   COMMANDES REÇUES / MES ACHATS — mobile-first cards
+   ========================================= */
+
+/* Override vp-card pour les onglets commandes */
+.vp-orders-list .vp-card {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* Bannière image full-width */
+.vp-order-banner {
+  position: relative;
+  width: 100%;
+  height: 130px;
+  background: #f0f0f0;
+  flex-shrink: 0;
+}
+.vp-order-banner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.vp-order-banner-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ccc;
+  font-size: 32px;
+  background: linear-gradient(135deg, #f5f5f5, #e8e8e8);
+}
+/* Status pill flottant sur l'image */
+.vp-order-status-pill {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  backdrop-filter: blur(4px);
+}
+.vp-order-status-pill.vp-s-success  { background: rgba(209,250,229,0.95); color: #065f46; }
+.vp-order-status-pill.vp-s-warning  { background: rgba(254,243,199,0.95); color: #92400e; }
+.vp-order-status-pill.vp-s-info     { background: rgba(219,234,254,0.95); color: #1e40af; }
+.vp-order-status-pill.vp-s-default  { background: rgba(243,244,246,0.95); color: #4b5563; }
+.vp-order-status-pill.vp-s-danger   { background: rgba(254,226,226,0.95); color: #991b1b; }
+
+/* Corps de la card */
+.vp-order-body {
+  padding: 12px 14px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.vp-order-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.vp-order-oid {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--vp-secondary);
+  letter-spacing: 0.04em;
+}
+.vp-order-date {
+  font-size: 11px;
+  color: var(--vp-secondary);
+}
+.vp-order-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111;
+  margin: 0;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.vp-order-sub {
+  font-size: 12px;
+  color: var(--vp-secondary);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+}
+
+/* Chips meta */
+.vp-order-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 8px 14px 0;
+}
+.vp-card-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #f4f4f4;
+  border-radius: 99px;
+  padding: 3px 9px;
+  font-size: 11px;
+  color: #555;
+  white-space: nowrap;
+}
+.vp-card-chip i { font-size: 10px; color: #999; }
+
+/* Ligne prix en bas */
+.vp-card-price-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-top: 1px solid var(--vp-border);
+  background: #fafafa;
+  margin-top: 10px;
+}
+
+/* Zone action escrow */
+.vp-order-actions {
+  padding: 0 14px 14px;
+}
+
+.vp-status { display: inline-block; padding: 3px 8px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+.vp-s-success { background: #d1fae5; color: var(--vp-success); }
+.vp-s-warning { background: #fef3c7; color: var(--vp-warning); }
+.vp-s-danger  { background: #fee2e2; color: var(--vp-danger); }
+.vp-s-default { background: #f3f4f6; color: #555; }
+
+.vp-btn-main { background: var(--vp-primary); color: white; border: none; padding: 8px 16px; border-radius: 20px; font-size: 0.85rem; margin-top: 10px; cursor: pointer; }
+.vp-empty { text-align: center; padding: 50px 20px; color: var(--vp-secondary); grid-column: 1/-1; font-size: 0.95rem; }
+
+/* --- UX NON CONNECTÉ --- */
+.vp-not-logged {
+  height: 80vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 20px;
+  background-color: #fff;
+}
+.vp-icon-lock { font-size: 60px; color: #ccc; margin-bottom: 20px; }
+.vp-btn-login {
+  background: #000;
+  color: white;
+  padding: 12px 30px;
+  border-radius: 30px;
+  margin-top: 20px;
+  font-weight: bold;
+  font-size: 1rem;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+/* =========================================
+   SNAP SCROLL LIGHTBOX (FLUX)
+   ========================================= */
+
+.vp-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #000;
+  z-index: 800; /* Z-index élevé */
+}
+
+.vp-snap-container {
+  width: 100%;
+  height: 100%;
+  overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+}
+
+.vp-snap-item {
+  width: 100%;
+  height: 100dvh;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  background: #000;
+  overflow: hidden;
+}
+
+/* Media Layer */
+.vp-media-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+.vp-media-layer .feed-image { width: 100%; height: 100%; position: absolute !important; }
+.vp-gradient-overlay {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.2) 40%, transparent 100%);
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* Info Layer */
+.vp-info-layer {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  z-index: 3;
+  max-width: 75%;
+  color: white;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.vp-info-layer h3 { font-weight: 700; font-size: 1.1rem; margin: 0 0 5px 0; text-shadow: 0 0 4px rgba(0,0,0,0.8); }
+.vp-info-layer h2 { font-size: 1rem; margin: 0 0 5px 0; line-height: 1.3; text-shadow: 0 0 4px rgba(0,0,0,0.8); }
+.vp-info-layer p { font-size: 0.9rem; color: #cfcfcf; margin: 0 0 8px 0; text-shadow: 0 0 4px rgba(0,0,0,0.8); max-height: 60px; overflow: hidden; }
+.vp-price { color: var(--vp-accent); font-weight: 600; font-size: 1rem; text-shadow: 0 0 4px rgba(0,0,0,0.8); }
+
+/* Actions Layer */
+.vp-actions-layer {
+  position: absolute;
+  bottom: 40px;
+  right: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  z-index: 3;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.vp-action-btn { display: flex; flex-direction: column; align-items: center; color: white; cursor: pointer; text-shadow: 0 0 4px rgba(0,0,0,0.8); }
+.vp-action-btn i { font-size: 28px; margin-bottom: 4px; }
+.vp-action-btn span { font-size: 12px; font-weight: 600; }
+.vp-vendor-avatar { width: 45px; height: 45px; border-radius: 50%; border: 2px solid white; object-fit: cover; margin-bottom: 10px; }
+.vp-close-btn { position: absolute; top: 20px; left: 20px; z-index: 1001; background: rgba(0,0,0,0.3); border: none; color: white; width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; backdrop-filter: blur(4px); }
+
+/* =========================================
+   OVERLAYS (COMMENTAIRES & COMMANDES)
+   ========================================= */
+
+/* Overlay Glissant */
+.review-overlay {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10000; /* Au dessus du modal lightbox */
+  display: flex;
+  align-items: flex-end;
+  background: rgba(0, 0, 0, 0.5); /* Fond semi-transparent */
+}
+
+/* Panneau Blanc */
+.review-panel {
+  background: #fff;
+  width: 100%;
+  max-height: 80%; /* Prend 80% max de l'écran */
+  overflow-y: auto;
+  border-radius: 20px 20px 0 0;
+  padding: 20px;
+  position: relative;
+  animation: slideUp 0.3s ease-out;
+  color: black;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.btn-close-panel {
+  position: absolute;
+  top: 15px;
+  right: 20px;
+  font-size: 28px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #333;
+}
+
+/* Formulaires et Boutons dans l'overlay */
+.vp-form-control {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+.vp-btn-primary {
+  width: 100%;
+  padding: 12px;
+  background-color: var(--vp-primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.vp-btn-outline {
+  width: 100%;
+  padding: 12px;
+  background-color: white;
+  border: 1px solid var(--vp-danger);
+  color: var(--vp-danger);
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+/* Options de Taille/Couleur */
+.vp-option-btn {
+  padding: 8px 16px;
+  border: 1px solid #ccc;
+  background: white;
+  border-radius: 20px;
+  margin-right: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+.vp-option-btn.selected {
+  background-color: var(--vp-primary);
+  color: white;
+  border-color: var(--vp-primary);
+}
+
+.vp-color-circle {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid #ddd;
+  margin-right: 10px;
+  cursor: pointer;
+  display: inline-block;
+}
+.vp-color-circle.selected {
+  border: 2px solid black;
+  transform: scale(1.1);
+}
+
+/* =========================================
+   ESCROW — RÉSUMÉ COMMANDE & BOUTON PAYSTACK
+   ========================================= */
+
+.vp-order-summary {
+  background: #f8f9fa;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.vp-order-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.88rem;
+  color: #555;
+}
+.vp-order-fee  { color: #d97706; }
+.vp-order-total {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 6px;
+  margin-top: 2px;
+  color: #111;
+  font-size: 0.95rem;
+}
+
+.vp-btn-paystack {
+  width: 100%;
+  padding: 13px;
+  background: #0ba4db;          /* couleur Paystack */
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  margin-top: 4px;
+  transition: background 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.vp-btn-paystack:hover { background: #0990c3; }
+
+/* =========================================
+   ESCROW — BADGES & ACTIONS DANS LES ONGLETS COMMANDES
+   ========================================= */
+
+.vp-escrow-badge {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.vp-escrow-pending   { background: #fef3c7; color: #92400e; }
+.vp-escrow-shipped   { background: #dbeafe; color: #1e40af; }
+.vp-escrow-validated { background: #d1fae5; color: #065f46; }
+.vp-escrow-released  { background: #f3f4f6; color: #374151; }
+
+/* Bouton vendeur : marquer expédié */
+.vp-btn-ship {
+  margin-top: 10px;
+  padding: 8px 16px;
+  background: #111;
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s;
+}
+.vp-btn-ship:hover { background: #333; }
+
+/* =========================================
+   ESCROW — BLOC VALIDATION LIVRAISON (client)
+   ========================================= */
+
+.vp-validation-block {
+  margin-top: 12px;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 10px;
+  padding: 12px;
+}
+.vp-validation-hint {
+  font-size: 0.82rem;
+  color: #0c4a6e;
+  margin: 0 0 10px;
+  line-height: 1.4;
+}
+.vp-validation-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.vp-code-input {
+  flex: 1;
+  font-family: monospace;
+  font-size: 1rem;
+  letter-spacing: 4px;
+  text-align: center;
+  text-transform: uppercase;
+  margin-bottom: 0 !important;
+}
+.vp-btn-validate {
+  padding: 10px 16px;
+  background: #059669;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.vp-btn-validate:disabled { background: #aaa; cursor: not-allowed; }
+.vp-btn-validate:not(:disabled):hover { background: #047857; }
+.vp-validation-note {
+  font-size: 0.77rem;
+  color: #6b7280;
+  margin: 8px 0 0;
+}
+
+/* =========================================
+   AVIS REÇUS (onglet ★ VendorProfile)
+   ========================================= */
+.vp-star-on  { color: #f6a623; }
+.vp-star-off { color: #ddd; }
+
+.vp-review-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f9f9f9;
+  border-radius: 12px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+}
+.vp-review-avg { font-size: 2rem; font-weight: 700; line-height: 1; }
+
+.vp-review-list { display: flex; flex-direction: column; gap: 12px; }
+
+.vp-review-item {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+.vp-review-item-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.vp-review-avatar {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.vp-review-name  { font-weight: 600; font-size: 14px; }
+.vp-review-comment { font-size: 14px; color: #333; margin: 0; line-height: 1.5; }
+
+/* =========================================
+   LOADING SCREEN
+   ========================================= */
+.vp-loader-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  z-index: 9999;
+  gap: 16px;
+}
+.vp-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #eee;
+  border-top-color: #000;
+  border-radius: 50%;
+  animation: vp-spin 0.7s linear infinite;
+}
+@keyframes vp-spin { to { transform: rotate(360deg); } }
+.vp-loader-text { font-size: 0.9rem; color: var(--vp-secondary); margin: 0; }
+
+/* =========================================
+   LIGHTBOX — classes manquantes
+   ========================================= */
+
+/* Bouton fermer (×) positionné en haut à gauche */
+.vp-modal-close {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 1001;
+  background: rgba(0, 0, 0, 0.45);
+  border: none;
+  color: white;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  backdrop-filter: blur(4px);
+  transition: background 0.2s;
+}
+.vp-modal-close:hover { background: rgba(0,0,0,0.7); }
+
+/* Lien vendeur dans la couche info */
+.vp-info-vendor {
+  display: inline-block;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #fff;
+  text-shadow: 0 1px 6px rgba(0,0,0,0.7);
+  margin-bottom: 6px;
+}
+
+/* Prix produit dans le lightbox */
+.vp-price-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 1rem;
+  color: #fff;
+  margin: 4px 0 8px;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+}
+.vp-old-price {
+  font-size: 0.82rem;
+  font-weight: 400;
+  color: #aaa;
+  text-decoration: line-through;
+}
+
+/* Lien externe sur une présentation vidéo */
+.vp-link-text {
+  font-size: 0.82rem;
+  color: #90caf9;
+  word-break: break-all;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.7);
+}
+
+/* Vidéo dans le lightbox — object-fit cover pour plein écran */
+.vp-snap-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #000;
+}
+
+/* Tile vidéo — overlay play icon */
+.vp-tile { position: relative; }
+.vp-tile:hover .vp-play-icon { opacity: 1; }
+.vp-play-icon {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 1.4rem;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.6);
+  opacity: 0.85;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}

@@ -81,3 +81,92 @@ class Message(models.Model):
 
     def __str__(self):
         return f"Message from {self.sender.email} in Conversation {self.conversation.id}"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Admin Panel — Roles & Profiles
+# ─────────────────────────────────────────────────────────────────────────────
+
+class AdminRole(models.Model):
+    """Rôle admin avec permissions granulaires."""
+    name        = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True)
+
+    # ── Utilisateurs ──
+    can_view_users   = models.BooleanField(default=True)
+    can_edit_users   = models.BooleanField(default=False)
+    can_ban_users    = models.BooleanField(default=False)
+    can_delete_users = models.BooleanField(default=False)
+
+    # ── Vendeurs ──
+    can_view_vendors    = models.BooleanField(default=True)
+    can_approve_vendors = models.BooleanField(default=False)
+    can_suspend_vendors = models.BooleanField(default=False)
+
+    # ── Produits ──
+    can_view_products   = models.BooleanField(default=True)
+    can_edit_products   = models.BooleanField(default=False)
+    can_delete_products = models.BooleanField(default=False)
+    can_feature_products = models.BooleanField(default=False)
+
+    # ── Commandes ──
+    can_view_orders   = models.BooleanField(default=True)
+    can_manage_orders = models.BooleanField(default=False)
+
+    # ── Finances ──
+    can_view_payments    = models.BooleanField(default=False)
+    can_process_payouts  = models.BooleanField(default=False)
+    can_view_stats       = models.BooleanField(default=False)
+
+    # ── Contenu ──
+    can_manage_categories    = models.BooleanField(default=False)
+    can_manage_presentations = models.BooleanField(default=False)
+
+    # ── Admin ──
+    can_manage_roles  = models.BooleanField(default=False)
+    can_manage_admins = models.BooleanField(default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Rôle Admin"
+        verbose_name_plural = "Rôles Admin"
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+    def permissions_dict(self):
+        fields = [f.name for f in self._meta.fields if isinstance(f, models.BooleanField)]
+        return {f: getattr(self, f) for f in fields}
+
+
+class AdminProfile(models.Model):
+    """Profil d'un administrateur avec son rôle et ses métadonnées."""
+    user         = models.OneToOneField(User, on_delete=models.CASCADE, related_name='admin_profile')
+    role         = models.ForeignKey(AdminRole, on_delete=models.SET_NULL, null=True, blank=True)
+    is_superadmin = models.BooleanField(default=False)
+    is_active    = models.BooleanField(default=True)
+    notes        = models.TextField(blank=True)
+    created_by   = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='created_admins'
+    )
+    created_at   = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Profil Admin"
+        verbose_name_plural = "Profils Admin"
+
+    def __str__(self):
+        role_name = "Superadmin" if self.is_superadmin else (self.role.name if self.role else "Sans rôle")
+        return f"{self.user.email} [{role_name}]"
+
+    def has_perm(self, perm: str) -> bool:
+        """Vérifie une permission. Superadmin a tout."""
+        if self.is_superadmin:
+            return True
+        if not self.role or not self.is_active:
+            return False
+        return getattr(self.role, perm, False)

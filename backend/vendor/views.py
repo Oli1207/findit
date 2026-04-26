@@ -9,6 +9,7 @@ from store.models import *
 from store.serializers import *
 from django.http import JsonResponse
 from django.db import models, transaction
+from vendor.models import VendorVerification
 
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -113,6 +114,7 @@ class VendorProfileUpdateView(generics.RetrieveUpdateAPIView):
     serializer_class = ProfileSerializer
     permission_classes = [AllowAny]
 
+
 class ShopUpdateView(generics.RetrieveUpdateAPIView):
     queryset = Vendor.objects.all()
     serializer_class = VendorSerializer
@@ -127,6 +129,7 @@ class ShopAPIView(generics.RetrieveAPIView):
         vendor_slug = self.kwargs['vendor_slug']
         return Vendor.objects.get(slug=vendor_slug)
 
+
 class ShopProductAPIView(generics.ListAPIView):
     serializer_class = ProductSerializer
     permission_classes = [AllowAny]
@@ -136,6 +139,7 @@ class ShopProductAPIView(generics.ListAPIView):
         vendor = Vendor.objects.get(id=vendor_id)
         return Product.objects.filter(vendor=vendor)
     
+
 class ShopProductIDAPIView(generics.ListAPIView):
     serializer_class = ProductSerializer
     permission_classes = [AllowAny]
@@ -145,77 +149,76 @@ class ShopProductIDAPIView(generics.ListAPIView):
         vendor = Vendor.objects.get(slug=vendor_slug)
         return Product.objects.filter(vendor=vendor)
     
+
 @api_view(['POST'])
-@permission_classes([AllowAny])  # Permettre un accès sans authentification
+@permission_classes([IsAuthenticated])   # Seul un utilisateur connecté peut suivre
 def toggle_follow(request, vendor_id):
     try:
-        user_id = request.data.get('user_id') 
-        print(user_id) # Récupérer l'ID de l'utilisateur depuis FormData
-        if not user_id:
-            return Response({"error": "User ID is required"}, status=400)
-        
-        try:
-            user = User.objects.get(id=user_id)
-        except User.DoesNotExist:
-            return Response({"error": "User not found"}, status=404)
-       
-        try:
-            vendor = Vendor.objects.get(id=vendor_id)
-        except Vendor.DoesNotExist:
-            return Response({"error": "Vendor does not exist"}, status=404)
-        
-        if user in vendor.followers.all():
-            vendor.followers.remove(user)
-            following = False
-     
-        else:
-            vendor.followers.add(user)
-            following = True
-        
-        return Response({"success": True, "following": following})
-    except Exception as e:
-        return Response({"error": str(e)}, status=500)
-    
-@api_view(['GET'])
-@permission_classes([AllowAny])  # Permettre l'accès sans authentification
-def get_vendor_details(request, vendor_id, user_id):
-    try:
-        # Récupérer le vendeur
         vendor = Vendor.objects.get(id=vendor_id)
-
-        # Récupérer l'utilisateur
-        try:
-            user = User.objects.get(id=user_id)
-            following = user in vendor.followers.all()  # Vérifier si l'utilisateur suit le vendeur
-        except User.DoesNotExist:
-            return Response({"error": "User not found"}, status=404)
-
-        # Retourner le statut de "suivi"
-        return Response({"following": following})
     except Vendor.DoesNotExist:
-        return Response({"error": "Vendor not found"}, status=404)
-    except Exception as e:
-        return Response({"error": str(e)}, status=500)
+        return Response({"error": "Vendeur introuvable"}, status=404)
+
+    user = request.user
+    if user in vendor.followers.all():
+        vendor.followers.remove(user)
+        following = False
+    else:
+        vendor.followers.add(user)
+        following = True
+
+    return Response({
+        "success": True,
+        "following": following,
+        "followers_count": vendor.followers.count(),
+    })
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def batch_is_following(request):
+    """
+    Vérifie en une seule requête si l'utilisateur connecté suit une liste de vendeurs.
+    Body: { "vendor_ids": [1, 2, 3] }
+    Réponse: { "1": true, "2": false, "3": true }
+    """
+    vendor_ids = request.data.get('vendor_ids', [])
+    if not vendor_ids:
+        return Response({})
+
+    user = request.user
+    if user.is_authenticated:
+        # 1 seule requête DB pour tous les vendeurs
+        followed_ids = set(
+            Vendor.objects
+            .filter(id__in=vendor_ids, followers=user)
+            .values_list('id', flat=True)
+        )
+        result = {str(vid): (vid in followed_ids) for vid in vendor_ids}
+    else:
+        result = {str(vid): False for vid in vendor_ids}
+
+    return Response(result)
 
 
 @api_view(['GET'])
+@permission_classes([AllowAny])
 def is_following(request, vendor_id, user_id):
+    """Conservé pour compatibilité – préférer batch_is_following."""
     try:
         vendor = Vendor.objects.get(id=vendor_id)
-        user = User.objects.get(id=user_id)
-        is_following = user in vendor.followers.all()
-        return Response({"following": is_following})
     except Vendor.DoesNotExist:
-        return Response({"error": "Vendor not found"}, status=404)
-    except User.DoesNotExist:
-        return Response({"error": "User not found"}, status=404)
+        return Response({"error": "Vendeur introuvable"}, status=404)
 
+    user = request.user
+    following = user.is_authenticated and vendor.followers.filter(id=user.id).exists()
+    return Response({"following": following})
 
 
 class OrdersAPIView(generics.ListAPIView):
     serializer_class = CartOrderSerializer
     permission_classes = (AllowAny,)
-
+    pagination_class = None
+    
     def get_queryset(self):
         vendor_id = self.kwargs['vendor_id']
         vendor = Vendor.objects.get(id=vendor_id)
@@ -236,26 +239,105 @@ class OrderDetailAPIView(generics.RetrieveAPIView):
             vendor=vendor, oid=order_oid)
         return order
 
+
 class VendorPresentationsAPIView(APIView):
-    permission_classes = [AllowAny]  # ou AllowAny si pas besoin d'auth
+    permission_classes = [AllowAny]
 
     def get(self, request, vendor_id):
         try:
             vendor = Vendor.objects.get(id=vendor_id)
-            presentations = Presentation.objects.filter(vendor=vendor)
-            serializer = PresentationSerializer(presentations, many=True, context={'request': request})
-            return Response({"presentations": serializer.data})
         except Vendor.DoesNotExist:
             return Response({"error": "Vendeur non trouvé"}, status=404)
+
+        presentations = (
+            Presentation.objects
+            .filter(vendor=vendor)
+            .select_related("vendor", "vendor__user")
+            .prefetch_related("comments")
+            .annotate(
+                likes_count=models.Count("likes", distinct=True),
+                comments_count=models.Count("comments", distinct=True),
+            )
+            .order_by("-id")
+        )
+        serializer = PresentationFeedSerializer(presentations, many=True, context={"request": request})
+        return Response({"presentations": serializer.data})
+
 
 class VendorProductsAPIView(APIView):
-    permission_classes = [AllowAny]  # ou AllowAny si pas besoin d'auth
+    permission_classes = [AllowAny]
 
     def get(self, request, vendor_id):
         try:
             vendor = Vendor.objects.get(id=vendor_id)
-            products = Product.objects.filter(vendor=vendor)
-            serializer = ProductSerializer(products, many=True, context={'request': request})
-            return Response({"products": serializer.data})
         except Vendor.DoesNotExist:
             return Response({"error": "Vendeur non trouvé"}, status=404)
+
+        products = (
+            Product.objects
+            .filter(vendor=vendor)
+            .select_related("vendor", "vendor__user", "category")
+            .prefetch_related("color_set", "size_set", "gallery_set", "specification_set")
+            .annotate(rating_count=models.Count("review", distinct=True))
+            .order_by("-date")
+        )
+        serializer = ProductFeedSerializer(products, many=True, context={"request": request})
+        return Response({"products": serializer.data})
+
+
+# ─── Vérification d'identité vendeur ─────────────────────────────────────────
+
+class VendorRequestVerificationView(APIView):
+    """
+    POST  — le vendeur soumet ses 3 photos live (base64).
+    Champs attendus : id_front, id_back, selfie  (base64 strings)
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            vendor = request.user.vendor
+        except Vendor.DoesNotExist:
+            return Response({'detail': 'Pas de compte vendeur.'}, status=400)
+
+        id_front = request.data.get('id_front')
+        id_back  = request.data.get('id_back')
+        selfie   = request.data.get('selfie')
+
+        if not (id_front and id_back and selfie):
+            return Response({'detail': 'Les 3 photos sont obligatoires.'}, status=400)
+
+        verif, _ = VendorVerification.objects.get_or_create(vendor=vendor)
+        # Refuse si déjà approuvé
+        if verif.status == 'approved':
+            return Response({'detail': 'Votre identité est déjà vérifiée ✓'}, status=400)
+
+        verif.status = 'pending'
+        verif.save_base64_photo('id_front', id_front)
+        verif.save_base64_photo('id_back',  id_back)
+        verif.save_base64_photo('selfie',   selfie)
+        verif.save()
+
+        return Response({'detail': 'Demande envoyée. Un admin examinera vos photos sous 48h.'})
+
+
+class VendorVerificationStatusView(APIView):
+    """GET — retourne le statut de vérification du vendeur connecté."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            vendor = request.user.vendor
+        except Vendor.DoesNotExist:
+            return Response({'detail': 'Pas de compte vendeur.'}, status=400)
+
+        try:
+            verif = vendor.verification
+            return Response({
+                'status':    verif.status,
+                'verified':  vendor.verified,
+                'submitted_at': verif.submitted_at,
+                'admin_notes':  verif.admin_notes if verif.status == 'rejected' else None,
+            })
+        except VendorVerification.DoesNotExist:
+            return Response({'status': None, 'verified': vendor.verified})

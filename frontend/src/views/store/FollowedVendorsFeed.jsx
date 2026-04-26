@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+// FollowedVendorsFeed.jsx
+import React, { useState, useEffect, useRef } from "react";
 import apiInstance from "../../utils/axios";
 import { Link, useNavigate } from "react-router-dom";
 import GetCurrentAddress from "../plugin/UserCountry";
@@ -7,8 +8,17 @@ import { useMediaQuery } from "react-responsive";
 import Swal from "sweetalert2";
 import Review from "./Review";
 import "./tiktokfeed.css";
+import { useFollowStore } from "../../store/useFollowStore";
+import ReloadPrompt from "../../Prompt";
+import InstallButton from "../../InstallButton";
+import { setUser } from "../../utils/auth";
+import { subscribeUserToPush } from "../../utils/push";
+import { syncReviewsIfOnline } from "./ReviewOffline";
+import { useSwipeable } from "react-swipeable";
 import BottomBar from "./BottomBar";
-// import star from 'etoile.png'
+import LoginModal from "../auth/LoginModal";
+import ProductSlider from "./ProductSlider";
+import BuyModal from "./BuyModal";
 
 const FollowedVendorsFeed = () => {
   const [profileData, setProfileData] = useState(null);
@@ -20,40 +30,239 @@ const FollowedVendorsFeed = () => {
   const currentAddress = GetCurrentAddress();
   const navigate = useNavigate();
   const [orderProduct, setOrderProduct] = useState(null);
-  const [selectedColors, setSelectedColors] = useState({});
-  const [selectedSize, setSelectedSize] = useState({});
-  const [showSpecifications, setShowSpecifications] = useState({});
-  const [colorValue, setColorValue] = useState("No Color");
-  const [sizeValue, setSizeValue] = useState("No Size");
-  const [qtyValue, setQtyValue] = useState(1);
   const [specificationStates, setSpecificationStates] = useState({});
-  const [useProfileAddress, setUseProfileAddress] = useState(true);
   const [loading, setLoading] = useState(true);
-  const [customAddress, setCustomAddress] = useState({
-    mobile: "",
-    address: "",
-    city: "",
-    state: "",
-    // country: currentAddress.country,
-  });
+  const [showLogin, setShowLogin] = useState(false);
 
-  const [followStates, setFollowStates] = useState({});
+  const [selectedPresentation, setSelectedPresentation] = useState(null);
+  const [commentValue, setCommentValue] = useState("");
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [replyValue, setReplyValue] = useState("");
+  const videoRefs = useRef([]);
+  videoRefs.current = [];
+const [expandedText, setExpandedText] = useState({});
+
+
+  const { followStates, fetchFollowStates, toggleFollow } = useFollowStore();
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const startTimesRef = useRef({});
+
+  // 🔐 Si pas connecté : écran d'accès restreint + LoginModal
+  if (!userData) {
+    return (
+      <div className="vp-container">
+        <div className="vp-header">
+          <span onClick={() => navigate(-1)}>← Retour</span>
+        </div>
+        <div className="vp-not-logged">
+          <i className="fas fa-user-lock vp-icon-lock" />
+          <h2>Accès Restreint</h2>
+          <p>Connecte-toi pour voir le fil de tes vendeurs suivis.</p>
+          <button className="vp-btn-login" onClick={() => setShowLogin(true)}>
+            Se connecter
+          </button>
+        </div>
+        <LoginModal show={showLogin} onClose={() => setShowLogin(false)} />
+      </div>
+    );
+  }
+
+  // --------- SYNC + PROFIL ---------
+  useEffect(() => {
+    setUser();
+  }, []);
+
+  useEffect(() => {
+    const syncAll = () => {
+      if (navigator.onLine) {
+        syncReviewsIfOnline();
+      }
+    };
+
+    syncAll();
+    window.addEventListener("online", syncAll);
+    return () => window.removeEventListener("online", syncAll);
+  }, []);
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const response = await axios.get(`user/profile/${userData?.user_id}/`); // Remplacez par l'URL complète si nécessaire
+        const response = await axios.get(`user/profile/${userData?.user_id}/`);
         setProfileData(response.data);
-        console.log(response.data);
       } catch (error) {
         console.error("Error fetching profile data:", error);
       }
     };
 
-    fetchProfile();
+    if (userData?.user_id) {
+      fetchProfile();
+    }
   }, [userData?.user_id]);
 
+  // ─── Normalisation URLs images ───────────────────────────────────────────────
+  const getUrl = (val) => {
+    if (!val) return null;
+    if (typeof val === "string") return val;
+    if (val.image) {
+      if (typeof val.image === "string") return val.image;
+      if (typeof val.image === "object") return val.image.url || val.image.path || null;
+    }
+    return val.url || val.path || null;
+  };
+
+  const normalizeItems = (data) =>
+    data.map((item) => {
+      const resolvedType = item.type || (item.video ? "presentation" : "product");
+      const mainImage = getUrl(item.image) || getUrl(item.cover) || getUrl(item.thumbnail) || null;
+      const galleryImages = (item.gallery || [])
+        .map((g) => (typeof g === "string" ? g : getUrl(g) || getUrl(g?.image) || null))
+        .filter(Boolean);
+      return { ...item, type: resolvedType, image: mainImage, gallery: galleryImages };
+    });
+
+  // ─── Fetch feed suivis (avec pagination) ─────────────────────────────────────
+  const fetchProducts = async (pageNum = 1, append = false) => {
+    if (!userData?.user_id) { setLoading(false); return; }
+    if (pageNum === 1) setLoading(true);
+    else setLoadingMore(true);
+
+    try {
+      const response = await axios.get(
+        `followed-feed/unified/${userData.user_id}/?page=${pageNum}`
+      );
+      const data     = response.data;
+      const rawItems = Array.isArray(data) ? data : (data.results || []);
+      const more     = Array.isArray(data) ? false : (data.has_more ?? false);
+      const transformed = normalizeItems(rawItems);
+
+      if (append) setProducts((prev) => [...prev, ...transformed]);
+      else        setProducts(transformed);
+
+      setHasMore(more);
+      setCurrentPage(pageNum);
+
+      const vendorIds = rawItems.map((p) => p.vendor?.id).filter(Boolean);
+      if (vendorIds.length) await fetchFollowStates(vendorIds, userData.user_id);
+    } catch (error) {
+      console.error("Erreur chargement feed suivis :", error);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  useEffect(() => {
+    setCurrentPage(1);
+    setHasMore(true);
+    fetchProducts(1, false);
+  }, [userData?.user_id]);
+
+  // ─── Infinite scroll ──────────────────────────────────────────────────────────
+  const feedItemRefsF = useRef([]);
+  useEffect(() => {
+    if (!hasMore || loadingMore || products.length === 0) return;
+    const triggerIndex = products.length - 4;
+    if (triggerIndex < 0) return;
+    const el = feedItemRefsF.current[triggerIndex];
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => { if (entries[0].isIntersecting) { observer.disconnect(); fetchProducts(currentPage + 1, true); } },
+      { threshold: 0.5 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [products.length, hasMore, loadingMore, currentPage]);
+
+  
+  // --------- OBSERVER VUES PRODUITS ---------
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const productId = entry.target.getAttribute("data-id");
+          if (!productId) return;
+
+          if (entry.isIntersecting) {
+            if (!startTimesRef.current[productId]) {
+              startTimesRef.current[productId] = Date.now();
+            }
+          } else {
+            const startTime = startTimesRef.current[productId];
+            if (startTime) {
+              const duration = (Date.now() - startTime) / 1000;
+
+              if (duration >= 15) {
+                sendView(productId, duration);
+              }
+              delete startTimesRef.current[productId];
+            }
+          }
+        });
+      },
+      { threshold: 0.7 }
+    );
+
+    const items = document.querySelectorAll(".feed-item[data-id]");
+    items.forEach((el) => observer.observe(el));
+
+    return () => {
+      items.forEach((el) => observer.unobserve(el));
+    };
+  }, []);
+
+  const sendView = async (productId, duration) => {
+    try {
+      await axios.post(`products/${productId}/view/`, {
+        product_id: productId,
+        duration: duration,
+      });
+    } catch (_) {
+      // silencieux – non critique
+    }
+  };
+
+  // --------- AUTOPLAY / PAUSE VIDÉOS ---------
+  useEffect(() => {
+    const observerOptions = { root: null, rootMargin: "0px", threshold: 0.7 };
+
+    const observerCallback = (entries) => {
+      entries.forEach((entry) => {
+        const video = entry.target;
+        if (entry.isIntersecting) {
+          videoRefs.current.forEach((v) => {
+            if (v !== video && v) v.pause();
+          });
+          video.play();
+        } else {
+          video.pause();
+        }
+      });
+    };
+
+    const observer = new IntersectionObserver(
+      observerCallback,
+      observerOptions
+    );
+
+    videoRefs.current.forEach((video) => {
+      if (video) observer.observe(video);
+    });
+
+    return () => {
+      videoRefs.current.forEach((video) => {
+        if (video) observer.unobserve(video);
+      });
+    };
+  }, [products]);
+
+  // --------- ACTIONS PRODUITS ---------
   const handleOrderClick = (product) => {
+    if (!userData) {
+      setShowLogin(true);
+      return;
+    }
     setOrderProduct(product);
   };
 
@@ -61,126 +270,11 @@ const FollowedVendorsFeed = () => {
     setOrderProduct(null);
   };
 
-  useEffect(() => {
-  let page = 1;
-  let hasMore = true;
-  let isFetching = false;
-
-  const fetchProducts = async () => {
-    if (!hasMore || isFetching) return;
-
-    isFetching = true;
-    setLoading(true);
-    try {
-      const response = await axios.get(
-        `products/followed/${userData?.user_id}/?page=${page}`
-      );
-
-      const data = Array.isArray(response.data)
-        ? response.data
-        : response.data.results || [];
-
-      setProducts((prev) => [...prev, ...data]);
-
-      // S'il y a pagination DRF, vérifier "next"
-      hasMore = Array.isArray(response.data)
-        ? data.length > 0
-        : !!response.data.next;
-
-      page++;
-    } catch (error) {
-      console.error("Erreur chargement produits :", error);
-    } finally {
-      setLoading(false);
-      isFetching = false;
-    }
-  };
-
-  const handleScroll = () => {
-    if (
-      window.innerHeight + window.scrollY >= document.body.offsetHeight - 50 &&
-      !loading &&
-      hasMore
-    ) {
-      fetchProducts();
-    }
-  };
-
-  // Ajout listener scroll
-  window.addEventListener("scroll", handleScroll);
-
-  // Réinitialisation + premier chargement
-  setProducts([]);
-  page = 1;
-  hasMore = true;
-  fetchProducts();
-
-  return () => {
-    window.removeEventListener("scroll", handleScroll);
-  };
-}, [userData?.user_id]);
-
- 
-  const handleFollowToggle = (userId, vendorId) => {
-    if (!userId || !vendorId) {
-      console.error("User ID or Vendor ID is missing");
-      return;
-    }
-    // Créer une instance de FormData
-    const formData = new FormData();
-    formData.append("user_id", userId); // Ajouter l'ID de l'utilisateur
-
-    // Envoyer une requête POST à l'API
-    axios
-      .post(`toggle-follow/${vendorId}/`, formData)
-      .then((response) => {
-        if (response.data.success) {
-          console.log(response.data);
-          setFollowStates((prevState) => ({
-            ...prevState,
-            [vendorId]: response.data.following, // Met à jour l'état pour ce vendeur
-          }));
-        } else {
-          console.error("Erreur:", response.data.error);
-        }
-      })
-      .catch((error) => {
-        console.error("Error toggling follow:", error);
-      });
-  };
-
-  const handleStartConversation = async (vendorId) => {
-    const userId = userData?.user_id; // Exemple de récupération de l'ID utilisateur
-    if (!userId) {
-      alert("User ID is missing. Please log in.");
-      return;
-    }
-
-    if (!vendorId) {
-      alert("Vendor ID is missing.");
-      return;
-    }
-
-    try {
-      const response = await apiInstance.post("conversations/", {
-        user_id: userId,
-        vendor_id: vendorId,
-      });
-      const conversation = response.data;
-      console.log("Conversation started:", conversation);
-
-      navigate(`/conversation/${conversation.id}`);
-      console.log(conversation.id);
-    } catch (error) {
-      console.error(
-        "Error starting conversation:",
-        error.response?.data || error.message
-      );
-      alert("Unable to start conversation. Please try again.");
-    }
-  };
-
   const handleReviewIconClick = (product) => {
+    if (!userData) {
+      setShowLogin(true);
+      return;
+    }
     setSelectedProduct(product);
   };
 
@@ -188,90 +282,12 @@ const FollowedVendorsFeed = () => {
     setSelectedProduct(null);
   };
 
-  const handleColorButtonClick = (product_id, colorName) => {
-    setColorValue(colorName);
-    setSelectedColors((prevSelectedColors) => ({
-      ...prevSelectedColors,
-      [product_id]: colorName,
-    }));
-  };
-
-  const handleSizeButtonClick = (product_id, sizeName) => {
-    setSizeValue(sizeName);
-    setSelectedSize((prevSelectedSize) => ({
-      ...prevSelectedSize,
-      [product_id]: sizeName,
-    }));
-  };
-
-  const handleQtyChange = (event) => {
-    setQtyValue(event.target.value);
-  };
-
-  const handleAddressChange = (e) => {
-    setAddress({
-      ...address,
-      [e.target.name]: e.target.value,
-    });
-  };
-
-  const handlePlaceOrder = async (product_id, price, vendor_id) => {
-    const formData = new FormData();
-    formData.append("product_id", product_id);
-    formData.append("user_id", userData?.user_id);
-    formData.append("qty", qtyValue);
-    formData.append("price", price);
-    formData.append("vendor", vendor_id);
-    formData.append("size", sizeValue);
-    formData.append("color", colorValue);
-    formData.append("full_name", userData?.full_name);
-
-    if (
-      useProfileAddress &&
-      profileData?.mobile &&
-      profileData?.address &&
-      profileData?.city
-    ) {
-      // On utilise le profil existant
-      formData.append("mobile", profileData.mobile);
-      formData.append("address", profileData.address);
-      formData.append("city", profileData.city);
-      formData.append("state", profileData.state);
-      formData.append("country", profileData.country);
-    } else {
-      // Sinon on prend les valeurs du formulaire
-      formData.append("mobile", customAddress.mobile);
-      formData.append("address", customAddress.address);
-      formData.append("city", customAddress.city);
-
-      // On met à jour le profil en même temps
-      const profileForm = new FormData();
-      profileForm.append("mobile", customAddress.mobile);
-      profileForm.append("address", customAddress.address);
-      profileForm.append("city", customAddress.city);
-
-      await axios.patch(`user/profile/${userData?.user_id}/`, profileForm);
-    }
-
-    try {
-      console.log(formData.values);
-      const response = await axios.post(`create-order/`, formData);
-      Swal.fire({
-        icon: "success",
-        title: "Commande passée avec succès !",
-        text: response.data.message,
-      });
-      setOrderProduct(null);
-    } catch (error) {
-      Swal.fire({
-        icon: "error",
-        title: "Échec commande",
-        text: error.response?.data?.message || "Erreur réseau",
-      });
-    }
-  };
-
   const addToWishList = async (productId) => {
+    if (!userData) {
+      setShowLogin(true);
+      return;
+    }
+
     const formdata = new FormData();
     formdata.append("product_id", productId);
     formdata.append("user_id", userData?.user_id);
@@ -293,10 +309,6 @@ const FollowedVendorsFeed = () => {
     }));
   };
 
-  const handleViewProduct = (product) => {
-    window.open(product.url, "_blank");
-  };
-
   const handleCopyLink = (product) => {
     const url = `${window.location.origin}/detail/${product.slug}`;
     navigator.clipboard
@@ -315,317 +327,397 @@ const FollowedVendorsFeed = () => {
         console.error("Erreur copie lien :", err);
       });
   };
-if (loading) {
-  return (
-    <div className="loading-spinner">
-      <i style={{color:"#DF468F"}} className="fas fa-spinner fa-spin fa-3x"></i>
-    </div>
-  );
-}
 
+  // --------- PUSH NOTIFS ---------
+  useEffect(() => {
+    if (userData) {
+      subscribeUserToPush();
+    }
+  }, [userData]);
+
+  // --------- VIDÉOS : LIKE + COMMENTAIRES ---------
+  const handleLike = async (id) => {
+    if (!userData) {
+      setShowLogin(true);
+      return;
+    }
+    try {
+      const res = await apiInstance.post(`presentations/${id}/like/`, {
+        user: userData?.user_id,
+      });
+
+      const updatedItems = products.map((item) =>
+        item.id === id && item.type === "presentation"
+          ? { ...item, likes_count: res.data.likes_count }
+          : item
+      );
+
+      setProducts(updatedItems);
+    } catch (err) {
+      console.error("Erreur like:", err);
+    }
+  };
+
+  const handleComment = async (e, presentationId, content, parentId = null) => {
+    e.preventDefault();
+
+    if (!userData) {
+      setShowLogin(true);
+      return;
+    }
+
+    try {
+      const res = await apiInstance.post("comments/create/", {
+        presentation: presentationId,
+        content: content,
+        user: userData?.user_id,
+        parent: parentId,
+      });
+
+      if (selectedPresentation) {
+        const updatedComments = selectedPresentation.comments.map((comment) => {
+          if (comment.id === parentId) {
+            return {
+              ...comment,
+              replies: [...(comment.replies || []), res.data],
+            };
+          }
+          return comment;
+        });
+
+        if (parentId) {
+          setSelectedPresentation({
+            ...selectedPresentation,
+            comments: updatedComments,
+          });
+          setReplyValue("");
+          setReplyingTo(null);
+        } else {
+          setSelectedPresentation({
+            ...selectedPresentation,
+            comments: [...selectedPresentation.comments, res.data],
+          });
+          setCommentValue("");
+        }
+      }
+    } catch (err) {
+      console.error("Erreur commentaire:", err);
+    }
+  };
+
+  const copyLink = (id) => {
+    const link = `${window.location.origin}/presentation/${id}`;
+    navigator.clipboard.writeText(link);
+    Swal.fire({
+      toast: true,
+      position: "bottom",
+      icon: "success",
+      title: "Lien copié dans le presse-papier",
+      showConfirmButton: false,
+      timer: 2000,
+    });
+  };
+
+  const handleCommentIconClick = (presentation) => {
+    if (!userData) {
+      setShowLogin(true);
+      return;
+    }
+    setSelectedPresentation(presentation);
+  };
+
+  const handleCloseCommentOverlay = () => {
+    setSelectedPresentation(null);
+    setReplyingTo(null);
+  };
+
+  const setVideoRef = (el, index) => {
+    if (el && !videoRefs.current[index]) {
+      videoRefs.current[index] = el;
+    }
+  };
+
+  const handleReviewStatsChange = (productId, stats) => {
+  setProducts((prev) =>
+    prev.map((p) =>
+      p.id === productId
+        ? { ...p, rating: stats.rating, rating_count: stats.rating_count }
+        : p
+    )
+  );
+};
+const truncateText = (text, max) => {
+  if (!text) return "";
+  return text.length > max ? text.slice(0, max) + "..." : text;
+};
+
+  // --------- LOADING ---------
+  if (loading) {
+    return (
+      <div className="loading-spinner">
+        <i style={{ color: "#DF468F" }} className="fas fa-spinner fa-spin fa-3x" />
+        <span>Chargement du feed…</span>
+      </div>
+    );
+  }
+
+  // --------- RENDER ---------
   return (
     <div className="app-container">
-      {/* Top navigation */}
+      {/* ── Top bar ── */}
       <div className="top-bar">
-        <div className="tabs">
-          <Link to="/solde" className="text-decoration-none text-white">
-            <span>Solde</span>
-          </Link>
-          <span className="active">Suivis</span>
-        
+        <div className="top-tabs">
+          <Link to="/solde" className="tab-pill">🔥 Solde</Link>
+          <Link to="/" className="brand-center">find<span>IT</span></Link>
+          <span className="tab-pill active">Suivis</span>
         </div>
-        <div className="search-icon">
-          <i class="fas fa-search"></i>
+        <div className="top-bar-right">
+          <Link to="/search" className="top-icon-btn">
+            <i className="fas fa-search" />
+          </Link>
         </div>
       </div>
 
-      {/* Feed */}
+      {/* ── Feed ── */}
       <div className="feed-container">
-        {products.map((product) => (
-          <div className="feed-item" key={product.id}>
-            <img
-              src={product.image}
-              alt={product.title}
-              className="feed-image"
-            />
-            <div className="overlay"></div>
-            <div className="info">
-              {product.vendor?.user !== userData?.user_id && (
+        {products.length === 0 ? (
+          <div className="feed-item" style={{ justifyContent: "center", alignItems: "center" }}>
+            <div style={{ textAlign: "center", color: "rgba(255,255,255,0.5)", padding: "40px 24px" }}>
+              <i className="fas fa-user-friends" style={{ fontSize: 52, marginBottom: 16, display: "block", color: "#DF468F", opacity: 0.6 }} />
+              <p style={{ fontSize: 16, color: "rgba(255,255,255,0.7)", fontWeight: 600, marginBottom: 8 }}>
+                Aucune publication
+              </p>
+              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>
+                Abonne-toi à des vendeurs pour voir leur contenu ici.
+              </p>
+            </div>
+          </div>
+        ) : (
+          products.map((item, index) => (
+            <div
+              ref={(el) => { feedItemRefsF.current[index] = el; }}
+              className="feed-item"
+              data-id={`${item.type}-${item.id}`}
+              key={`${item.type}-${item.id}`}
+            >
+              {item.type === "product" ? (
+                /* ── Carte produit ── */
                 <>
-                  <button
-                    onClick={() => handleStartConversation(product.vendor?.id)}
-                  >
-                    {product.vendor?.name}
-                  </button>
+                  <ProductSlider item={item} />
+                  <div className="feed-gradient-top" />
+                  <div className="feed-gradient" />
 
-                  <Link
-                    to={`/customer/${product.vendor?.slug}/`}
-                    style={{ backgroundColor: "gray" }}
-                    className="btn ms-2"
-                    type="submit"
-                  >
-                    View Shop <i className="fas fa-shop" />{" "}
-                  </Link>
-                </>
-              )}
-              {product.vendor?.user === userData?.user_id && (
-                <>
-                  {product.vendor?.name}
-                  <Link
-                    to={`/vendor/${product.vendor?.slug}/`}
-                    style={{ backgroundColor: "gray" }}
-                    className="btn ms-2"
-                    type="submit"
-                  >
-                    View Shop <i className="fas fa-shop" />{" "}
-                  </Link>
-                </>
-              )}
-              <h2>{product.title}</h2>
-
-              <p>{product.category?.title}</p>
-              <div className="specifications mt-2">
-                {product.specification && product.specification.length > 0 && (
-                  <>
-                    <button
-                      className="btn btn-link text-white p-0"
-                      onClick={() => toggleSpecification(product.id)}
-                    >
-                      <i className="fas fa-info-circle me-2"></i>
-                      Spécifications
-                    </button>
-
-                    {specificationStates[product.id] && (
-                      <div
-                        className="text-white mt-2 small"
-                        style={{ maxHeight: "200px", overflowY: "auto" }}
+                  <div className="info">
+                    <div className="vendor-chip">
+                      <Link to={item.vendor?.user === userData?.user_id ? `/profile/` : `/customer/${item.vendor?.slug}/`}>
+                        <img src={item.vendor?.image} className="vendor-avatar-sm" alt={item.vendor?.name} />
+                      </Link>
+                      <Link
+                        to={item.vendor?.user === userData?.user_id ? `/profile/` : `/customer/${item.vendor?.slug}/`}
+                        className="vendor-name-link"
                       >
-                        {product.specification
-                          .slice(
-                            0,
-                            specificationStates[product.id]
-                              ? product.specification.length
-                              : 3
-                          )
-                          .map((spec, index) => (
-                            <div key={index} className="mb-1">
-                              <strong>{spec.title}:</strong> {spec.content}
-                            </div>
-                          ))}
+                        {item.vendor?.name}
+                      </Link>
+                      {item.vendor?.user !== userData?.user_id && (
+                        <span
+                          className={`follow-chip${followStates[item.vendor?.id] ? " following" : ""}`}
+                          onClick={() => toggleFollow(userData?.user_id, item.vendor?.id)}
+                        >
+                          {followStates[item.vendor?.id] ? "Abonné" : "+ Suivre"}
+                        </span>
+                      )}
+                    </div>
 
-                        {product.specification.length > 3 && (
-                          <button
-                            className="btn btn-sm btn-link text-white p-0"
-                            onClick={() => toggleSpecification(product.id)}
-                          >
-                            {specificationStates[product.id]
-                              ? "Voir moins"
-                              : "Voir plus"}
-                          </button>
+                    <h2><Link to={`/detail/${item.slug}`}>{item.title}</Link></h2>
+                    <p>{item.description}</p>
+
+                    <div className="price-row">
+                      {item.old_price && Number(item.old_price) > Number(item.price) && (
+                        <span className="price-old">
+                          {Math.round(Number(item.old_price)).toLocaleString("fr-FR")} frs
+                        </span>
+                      )}
+                      <span className="price-current">
+                        {Math.round(Number(item.price)).toLocaleString("fr-FR")} frs
+                      </span>
+                    </div>
+
+                    <div className="feed-cta-row">
+                      <button className="feed-buy-btn" onClick={() => handleOrderClick(item)}>
+                        <i className="fas fa-shopping-bag" /> Acheter
+                      </button>
+                      <button className="feed-wishlist-btn" onClick={() => addToWishList(item.id)}>
+                        <i className="fas fa-heart" />
+                      </button>
+                    </div>
+
+                    {item?.category?.title && (
+                      <span className="category-tag" style={{ marginTop: 6 }}>{item.category.title}</span>
+                    )}
+
+                    {item.specification?.length > 0 && (
+                      <div className="specifications mt-1">
+                        <p className="specs-toggle-btn" onClick={() => toggleSpecification(item.id)}>
+                          <i className="fas fa-info-circle me-1" /> Spécifications
+                        </p>
+                        {specificationStates[item.id] && (
+                          <div className="specs-content">
+                            {item.specification.slice(0, 3).map((spec, i) => (
+                              <div key={i}><strong>{spec.title}:</strong> {spec.content}</div>
+                            ))}
+                          </div>
                         )}
                       </div>
                     )}
-                  </>
-                )}
-              </div>
+                  </div>
+
+                  <div className="actions">
+                    <div className="action-btn">
+                      <div className="action-icon-wrap">
+                        <i className="fas fa-star" />
+                      </div>
+                      <span>{item.rating ? item.rating.toFixed(1) : "0.0"}</span>
+                    </div>
+                    <div className="action-btn" onClick={() => handleReviewIconClick(item)}>
+                      <div className="action-icon-wrap">
+                        <i className="fas fa-comment-dots" />
+                      </div>
+                      <span>{item.rating_count || 0}</span>
+                    </div>
+                    <div className="action-btn" onClick={() => handleCopyLink(item)}>
+                      <div className="action-icon-wrap">
+                        <i className="fas fa-link" />
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                /* ── Carte vidéo ── */
+                <div
+                  className="feed-item"
+                  data-id={`${item.type}-${item.id}`}
+                  key={`${item.type}-${item.id}`}
+                >
+                  <video
+                    ref={(el) => setVideoRef(el, index)}
+                    autoPlay
+                    src={item.video}
+                    className="feed-image"
+                    muted
+                    loop
+                    playsInline
+                    onClick={(e) => {
+                      const v = e.target;
+                      v.paused ? v.play() : v.pause();
+                    }}
+                    style={{ cursor: "pointer" }}
+                  />
+                  <div className="feed-gradient-top" />
+                  <div className="feed-gradient" />
+
+                  <div className="info">
+                    <p style={{ fontWeight: 700, fontSize: "14px", marginBottom: "4px" }}>{item.vendor?.name}</p>
+                    <h2 style={{ marginBottom: "6px" }}>{item.title}</h2>
+                    <p>{item.description}</p>
+                    {item.link && (
+                      <a href={item.link} target="_blank" rel="noreferrer" style={{ color: "#DF468F", fontSize: "12px" }}>
+                        {item.link}
+                      </a>
+                    )}
+                  </div>
+
+                  <div className="actions">
+                    <div className="action-btn" onClick={() => handleLike(item.id)}>
+                      <div className="action-icon-wrap heart-btn">
+                        <i className="fas fa-heart" />
+                      </div>
+                      <span>{item.likes_count || 0}</span>
+                    </div>
+                    <div className="action-btn" onClick={() => handleCommentIconClick(item)}>
+                      <div className="action-icon-wrap">
+                        <i className="fas fa-comment-dots" />
+                      </div>
+                      <span>{item.comments?.length || 0}</span>
+                    </div>
+                    <div className="action-btn" onClick={() => copyLink(item.id)}>
+                      <div className="action-icon-wrap">
+                        <i className="fas fa-link" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="actions">
-              <div className="action-btn">
-                <i className="fas fa-star" />{" "}
-                <span>
-                  {product.rating ? product.rating.toFixed(1) : "0.0"}
-                </span>
-              </div>
-              <div
-                className="action-btn"
-                onClick={() => handleReviewIconClick(product)}
-              >
-                <i className="fas fa-comment-dots"></i>{" "}
-                <span>{product.rating_count || 0}</span>
-              </div>
-              <div
-                className="action-btn"
-                onClick={() => handleOrderClick(product)}
-              >
-                <i className="fas fa-shopping-cart"></i>
-              </div>
-              <div
-                className="action-btn"
-                onClick={() => handleCopyLink(product)}
-              >
-                <i className="fas fa-link"></i>
-              </div>
-            </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
 
-      {/* Bottom navigation */}
-       <BottomBar/>
-      {/* Review overlay */}
+      <BottomBar />
+      <LoginModal show={showLogin} onClose={() => setShowLogin(false)} />
+
+      {/* ── Overlay avis ── */}
       {selectedProduct && (
         <div className="review-overlay">
           <div className="review-panel">
-            <button className="btn-close" onClick={handleCloseReview}>
-              &times;
-            </button>
-            <Review product={selectedProduct} userData={userData} />
+            <button className="btn-close" onClick={handleCloseReview}>&times;</button>
+            <Review product={selectedProduct} userData={userData} onReviewStatsChange={handleReviewStatsChange} />
           </div>
         </div>
       )}
+
+      {/* ── Modal commande ── */}
       {orderProduct && (
+        <BuyModal
+          product={orderProduct}
+          userData={userData}
+          profileData={profileData}
+          onClose={handleCloseOrder}
+          onWishlist={(id) => addToWishList(id)}
+        />
+      )}
+
+      {/* ── Overlay commentaires vidéo ── */}
+      {selectedPresentation && (
         <div className="review-overlay">
           <div className="review-panel">
-            <button className="btn-close" onClick={handleCloseOrder}>
-              &times;
-            </button>
-            <h4 className="mb-3">{orderProduct.title}</h4>
-            {/* Variations */}
-            <div className="mb-3">
-              <label>
-                <b>Quantité :</b>
-              </label>
-              <input
-                type="number"
-                className="form-control"
-                value={qtyValue}
-                min="1"
-                onChange={handleQtyChange}
-              />
+            <button className="btn-close" onClick={handleCloseCommentOverlay}>&times;</button>
+            <h4 className="mb-3">Commentaires</h4>
+
+            <div className="mb-3" style={{ maxHeight: "300px", overflowY: "auto", color: "black" }}>
+              {selectedPresentation.comments
+                .filter((c) => c.parent === null)
+                .map((comment) => (
+                  <div key={comment.id}>
+                    <b>{comment.display_name}</b> : {comment.content}
+                    <button className="btn btn-sm btn-link" onClick={() => setReplyingTo(comment.id)}>Répondre</button>
+                    {comment?.replies.map((reply) => (
+                      <div key={reply.id} style={{ marginBottom: 20, marginLeft: 20, fontStyle: "italic" }}>
+                        ↳ <b>{reply.display_name}</b> : {reply.content}
+                      </div>
+                    ))}
+                    {replyingTo === comment.id && (
+                      <div className="d-flex gap-2 my-1">
+                        <input type="text" placeholder="Votre réponse" className="form-control"
+                          value={replyValue} onChange={(e) => setReplyValue(e.target.value)} />
+                        <button className="btn btn-success"
+                          onClick={(e) => replyValue.trim() && handleComment(e, selectedPresentation.id, replyValue, comment.id)}>
+                          Envoyer
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
             </div>
-            {orderProduct.size?.length > 0 && (
-              <div className="mb-3">
-                <label>
-                  <b>Taille :</b>
-                </label>
-                <div className="d-flex flex-wrap gap-2">
-                  {orderProduct.size.map((size, index) => (
-                    <button
-                      key={index}
-                      onClick={() =>
-                        handleSizeButtonClick(orderProduct.id, size.name)
-                      }
-                      className="btn btn-outline-primary btn-sm"
-                    >
-                      {size.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            {orderProduct.color?.length > 0 && (
-              <div className="mb-3">
-                <label>
-                  <b>Couleur :</b>
-                </label>
-                <div className="d-flex flex-wrap gap-2">
-                  {orderProduct.color.map((color, index) => (
-                    <button
-                      key={index}
-                      className="btn btn-sm p-3"
-                      style={{ backgroundColor: `${color.color_code}` }}
-                      onClick={() =>
-                        handleColorButtonClick(orderProduct.id, color.name)
-                      }
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-            {/* Utiliser mon adresse */}
-            {profileData?.mobile &&
-            profileData?.address &&
-            profileData?.city ? (
-              <div className="form-check my-3">
-                <input
-                  className="form-check-input"
-                  type="checkbox"
-                  id="useProfileAddress"
-                  checked={useProfileAddress}
-                  onChange={(e) => setUseProfileAddress(e.target.checked)}
-                />
-                <label className="form-check-label" htmlFor="useProfileAddress">
-                  Utiliser mon adresse enregistrée
-                </label>
-              </div>
-            ) : null}
-            {/* /* Si décoché ou adresse inexistante → champs personnalisés  */}
-            {(!useProfileAddress ||
-              !profileData?.mobile ||
-              !profileData?.address ||
-              !profileData?.city) && (
-              <div>
-                <div className="mb-2">
-                  <label>Téléphone</label>
-                  <input
-                    className="form-control"
-                    value={customAddress.mobile}
-                    onChange={(e) =>
-                      setCustomAddress({
-                        ...customAddress,
-                        mobile: e.target.value,
-                      })
-                    }
-                    type="text"
-                  />
-                </div>
-                <div className="mb-2">
-                  <label>Adresse</label>
-                  <input
-                    className="form-control"
-                    value={customAddress.address}
-                    onChange={(e) =>
-                      setCustomAddress({
-                        ...customAddress,
-                        address: e.target.value,
-                      })
-                    }
-                    type="text"
-                  />
-                </div>
-                <div className="mb-2">
-                  <label>Ville</label>
-                  <input
-                    className="form-control"
-                    value={customAddress.city}
-                    onChange={(e) =>
-                      setCustomAddress({
-                        ...customAddress,
-                        city: e.target.value,
-                      })
-                    }
-                    type="text"
-                  />
-                </div>
-              </div>
-            )}
-            {/* Boutons actions */}
-            <button
-              className="btn btn-primary w-100 my-2"
-              onClick={() =>
-                handlePlaceOrder(
-                  orderProduct.id,
-                  orderProduct.price,
-                  orderProduct.vendor?.id
-                )
-              }
-            >
-              <i className="fas fa-shopping-cart me-2" />
-              Commander
-            </button>
-            <button
-              className="btn btn-outline-danger w-100"
-              onClick={() => addToWishList(orderProduct.id)}
-            >
-              <i className="fas fa-heart me-2" />
-              Ajouter en wishlist
-            </button>
+
+            <div className="d-flex gap-2">
+              <input type="text" placeholder="Votre commentaire" className="form-control"
+                value={commentValue} onChange={(e) => setCommentValue(e.target.value)} />
+              <button className="btn btn-primary"
+                onClick={(e) => commentValue.trim() && handleComment(e, selectedPresentation.id, commentValue)}>
+                Envoyer
+              </button>
+            </div>
           </div>
-        </div>
-      )}
-      {products < 1 && (
-        <div className="feed-container">
-        <h5 style={{marginTop:"30px", fontSize: "16px"}} className="p-3">Vous ne suivez pas encore de vendeur</h5>
         </div>
       )}
     </div>

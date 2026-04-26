@@ -40,6 +40,20 @@ import InstallButton from './InstallButton'
 import PWAInstallPrompt from './views/store/PWAInstallPrompt'
 import Solde from './views/store/Solde'
 import VendorProfile from './views/vendor/VendorProfile'
+import PaymentVerify from './views/store/PaymentVerify'
+import moment from "moment";
+import "moment/locale/fr";
+import AddPresentation from './views/store/AddPresentation'
+import NotFound from './views/NotFound'
+import AdminGuard from './views/admin/AdminGuard'
+import AdminDashboard from './views/admin/AdminDashboard'
+import AdminUsers from './views/admin/AdminUsers'
+import AdminVendors from './views/admin/AdminVendors'
+import AdminOrders from './views/admin/AdminOrders'
+import AdminPayouts from './views/admin/AdminPayouts'
+import AdminRoles from './views/admin/AdminRoles'
+
+moment.locale("fr");
 
 function App() {
   return (
@@ -58,49 +72,71 @@ function App() {
         } /> */}
 
         {/* Les autres routes dans MainWrapper */}
-        <Route path="/" element={<MainWrapper><TikTokFeed /></MainWrapper>} />
-        <Route path="/ancien" element={<MainWrapper><Products /></MainWrapper>} />
-        <Route path="/suivis" element={<MainWrapper><FollowedVendorsFeed /></MainWrapper>} />
+{/*done*/}  <Route path="/" element={<MainWrapper><TikTokFeed /></MainWrapper>} />
+ {/*to abort*/}        <Route path="/ancien" element={<MainWrapper><Products /></MainWrapper>} />
+{/*done*/} <Route path="/suivis" element={<MainWrapper><FollowedVendorsFeed /></MainWrapper>} />
         <Route path="/register" element={<MainWrapper><Register /></MainWrapper>} />
         <Route path="/login" element={<MainWrapper><Login /></MainWrapper>} />
         <Route path="/logout" element={<MainWrapper><Logout /></MainWrapper>} />
         {/* <Route path="/dashboard" element={<MainWrapper><Dashboard /></MainWrapper>} /> */}
         <Route path="/forgot-password" element={<MainWrapper><ForgotPassword /></MainWrapper>} />
           <Route path="/create-new-password" element={<MainWrapper><CreateNewPassword /></MainWrapper>} />
-        <Route path="/haul" element={<MainWrapper><Explore /></MainWrapper>} />
-        <Route path="/detail/:slug/" element={<MainWrapper><ProductDetailFeed /></MainWrapper>} />
-        <Route path="/cart/" element={<MainWrapper><Cart /></MainWrapper>} />
-        <Route path="/checkout/:order_oid/" element={<MainWrapper><Checkout /></MainWrapper>} />
-        <Route path="/payment-success/:order_oid/" element={<MainWrapper><PaymentSuccess /></MainWrapper>} />
-           <Route path="/solde/" element={<MainWrapper><Solde /></MainWrapper>} />
-           <Route path="/profile/" element={<MainWrapper><VendorProfile /></MainWrapper>} />
+   {/*done*/}      <Route path="/haul" element={<MainWrapper><Explore /></MainWrapper>} />
+         <Route path="/cart/" element={<MainWrapper><Cart /></MainWrapper>} />
+ {/*done*/}        <Route path="/checkout/:order_oid/" element={<MainWrapper><Checkout /></MainWrapper>} />
+  {/*done*/}       <Route path="/payment-success/:order_oid/" element={<MainWrapper><PaymentSuccess /></MainWrapper>} />
+   {/*done*/}         <Route path="/solde/" element={<MainWrapper><Solde /></MainWrapper>} />
+   {/*done*/}         <Route path="/profile/" element={<MainWrapper><VendorProfile /></MainWrapper>} />
+    {/*done*/}        <Route path="/payment/verify/" element={<MainWrapper><PaymentVerify /></MainWrapper>} />
          
         {/* Routes clients sécurisées */}
-        <Route path="/customer/account/" element={<MainWrapper><PrivateRoute><Account /></PrivateRoute></MainWrapper>} />
-        <Route path="/customer/orders/" element={<MainWrapper><PrivateRoute><Orders /></PrivateRoute></MainWrapper>} />
-        <Route path="/customer/order/:order_oid/" element={<MainWrapper><PrivateRoute><OrderDetail /></PrivateRoute></MainWrapper>} />
-        <Route path="/customer/wishlist/" element={<MainWrapper><PrivateRoute><Wishlist /></PrivateRoute></MainWrapper>} />
-        <Route path="/add-product/" element={<MainWrapper><PrivateRoute><AddProduct /></PrivateRoute></MainWrapper>} />
-        <Route path="/search" element={<MainWrapper><Search /></MainWrapper>} />
+{/*done*/}        <Route path="/customer/orders/" element={<MainWrapper><PrivateRoute><Orders /></PrivateRoute></MainWrapper>} />
+{/*done*/}         <Route path="/add-product/" element={<MainWrapper><PrivateRoute><AddProduct /></PrivateRoute></MainWrapper>} />
+ {/*done*/}        <Route path="/search" element={<MainWrapper><Search /></MainWrapper>} />
 
         {/* Routes vendeur sécurisées */}
-        <Route path="/vendor/" element={<MainWrapper><PrivateRoute><Vendor /></PrivateRoute></MainWrapper>} />
-        <Route path="/vendor/dashboard" element={<MainWrapper><PrivateRoute><DashboardVendor /></PrivateRoute></MainWrapper>} />
-        <Route path="/vendor/products/" element={<MainWrapper><PrivateRoute><Product /></PrivateRoute></MainWrapper>} />
-        <Route path="/vendor/settings/" element={<MainWrapper><PrivateRoute><VendorSettings /></PrivateRoute></MainWrapper>} />
-        <Route path="/vendor/:slug/" element={<MainWrapper><PrivateRoute><Shop /></PrivateRoute></MainWrapper>} />
-        <Route path="/vendor/orders/" element={<MainWrapper><PrivateRoute><OrdersVendorTiktok/></PrivateRoute></MainWrapper>} />
-        <Route path="/vendor/order/:order_oid" element={<MainWrapper><PrivateRoute><OrderDetailVendor /></PrivateRoute></MainWrapper>} />
-
+       
+      {/*done*/}    <Route path="/vendor/settings/" element={<MainWrapper><PrivateRoute><VendorSettings /></PrivateRoute></MainWrapper>} />
+          
         {/* Chat et messagerie */}
-        <Route path="/conversation/:conversationId" element={<MainWrapper><Chat /></MainWrapper>} />
-        <Route path="/customer/messages" element={<MainWrapper><CustomerMessages /></MainWrapper>} />
-        <Route path="/vendor/messages" element={<MainWrapper><VendorMessages /></MainWrapper>} />
-        <Route path="/customer/chat/:conversationId" element={<MainWrapper><Chat /></MainWrapper>} />
-        <Route path="/vendor/chat/:conversationId" element={<MainWrapper><Chat /></MainWrapper>} />
+   {/*done*/}      <Route path="/conversation/:conversationId" element={<MainWrapper><Chat /></MainWrapper>} />
+  {/*done*/}     <Route path="/customer/messages" element={<MainWrapper><CustomerMessages /></MainWrapper>} />
+  {/*done*/}       <Route path="/vendor/messages" element={<MainWrapper><VendorMessages /></MainWrapper>} />
+  {/*done*/}       <Route path="/customer/chat/:conversationId" element={<MainWrapper><Chat /></MainWrapper>} />
+  {/*done*/}       <Route path="/vendor/chat/:conversationId" element={<MainWrapper><Chat /></MainWrapper>} />
 
         {/* Shop client */}
-        <Route path="/customer/:slug/" element={<MainWrapper><CustomerShop /></MainWrapper>} />
+ {/*done*/}        <Route path="/customer/:slug/" element={<MainWrapper><CustomerShop /></MainWrapper>} />
+{/*done*/}  <Route path="/vendor/add-presentation" element={<MainWrapper><PrivateRoute><AddPresentation /></PrivateRoute></MainWrapper>} /> 
+
+
+
+          
+          {/* Routes abandonnées */}
+ <Route path="/vendor/" element={<MainWrapper><PrivateRoute><Vendor /></PrivateRoute></MainWrapper>} />
+        <Route path="/vendor/dashboard" element={<MainWrapper><PrivateRoute><DashboardVendor /></PrivateRoute></MainWrapper>} />
+        <Route path="/vendor/products/" element={<MainWrapper><PrivateRoute><Product /></PrivateRoute></MainWrapper>} />
+         <Route path="/vendor/:slug/" element={<MainWrapper><PrivateRoute><Shop /></PrivateRoute></MainWrapper>} />
+           <Route path="/customer/account/" element={<MainWrapper><PrivateRoute><Account /></PrivateRoute></MainWrapper>} />
+       {/*to abort*/}       <Route path="/detail/:slug/" element={<MainWrapper><ProductDetailFeed /></MainWrapper>} />
+  <Route path="/vendor/orders/" element={<MainWrapper><PrivateRoute><OrdersVendorTiktok/></PrivateRoute></MainWrapper>} />
+        <Route path="/vendor/order/:order_oid" element={<MainWrapper><PrivateRoute><OrderDetailVendor /></PrivateRoute></MainWrapper>} />
+  <Route path="/customer/order/:order_oid/" element={<MainWrapper><PrivateRoute><OrderDetail /></PrivateRoute></MainWrapper>} />
+        <Route path="/customer/wishlist/" element={<MainWrapper><PrivateRoute><Wishlist /></PrivateRoute></MainWrapper>} />
+
+        {/* ── Admin Panel (hors MainWrapper — layout propre) ── */}
+        <Route path="/superadmin/*" element={<AdminGuard />}>
+          <Route index element={<AdminDashboard />} />
+          <Route path="users"    element={<AdminUsers />} />
+          <Route path="vendors"  element={<AdminVendors />} />
+          <Route path="orders"   element={<AdminOrders />} />
+          <Route path="payouts"  element={<AdminPayouts />} />
+          <Route path="roles"    element={<AdminRoles />} />
+          <Route path="admins"   element={<AdminRoles />} />
+        </Route>
+
+        {/* 404 — doit être en dernier */}
+        <Route path="*" element={<MainWrapper><NotFound /></MainWrapper>} />
 
       </Routes>
     </BrowserRouter>

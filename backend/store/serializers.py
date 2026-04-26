@@ -36,25 +36,34 @@ class ColorSerializer(serializers.ModelSerializer):
 
 
 class VendorSerializer(serializers.ModelSerializer):
+    followers_count = serializers.SerializerMethodField()
+
     class Meta:
         model = Vendor
         fields = '__all__'
 
+    def get_followers_count(self, obj):
+        return obj.followers.count()
+
     def get_fields(self):
         fields = super().get_fields()
         request = self.context.get("request")
-        if request and request.method == "POST":
-            for field in fields.values():
-                field.depth = 0
-        else:
-            for field in fields.values():
-                field.depth = 3
+        for name, field in fields.items():
+            if name == 'followers_count':
+                continue  # SerializerMethodField — depth n'a pas de sens
+            try:
+                if request and request.method == "POST":
+                    field.depth = 0
+                else:
+                    field.depth = 3
+            except AttributeError:
+                pass
         return fields
 
 
 
 class ProductSerializer(serializers.ModelSerializer):
-    gallery = GallerySerializer(many=True, read_only=True)
+    gallery = GallerySerializer(source="gallery_set", many=True, read_only=True)
     color = ColorSerializer(many=True, read_only=True)
     specification = SpecificationSerializer(many=True, read_only=True)
     size = SizeSerializer(many=True, read_only=True)
@@ -93,6 +102,7 @@ class ProductSerializer(serializers.ModelSerializer):
                    'date',
                    'type',
                    'url',
+                   'solde', 
                    
                    ]
 
@@ -294,3 +304,94 @@ class PresentationSerializer(serializers.ModelSerializer):
 
     def get_comments_count(self, obj):
         return Comment.objects.filter(presentation=obj).count()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FEED SERIALIZERS  –  légers, optimisés pour le flux principal
+# Minimisent les queries grâce à select_related / prefetch_related côté view
+# ─────────────────────────────────────────────────────────────────────────────
+
+class CategoryFeedSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = ['id', 'title', 'slug']
+
+
+class VendorFeedSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Vendor
+        fields = ['id', 'name', 'image', 'slug', 'user']
+
+
+class ProductFeedSerializer(serializers.ModelSerializer):
+    """Serializer produit allégé pour le feed – toutes les relations pré-chargées."""
+    vendor        = VendorFeedSerializer(read_only=True)
+    category      = CategoryFeedSerializer(read_only=True)
+    gallery       = serializers.SerializerMethodField()
+    color         = ColorSerializer(source="color_set",         many=True, read_only=True)
+    specification = SpecificationSerializer(source="specification_set", many=True, read_only=True)
+    size          = SizeSerializer(source="size_set",           many=True, read_only=True)
+    type          = serializers.SerializerMethodField()
+    rating_count  = serializers.IntegerField(read_only=True)   # valeur injectée par annotation ORM
+
+    class Meta:
+        model = Product
+        fields = [
+            'id', 'title', 'image', 'description', 'category',
+            'price', 'old_price', 'shipping_amount', 'stock_qty',
+            'in_stock', 'status', 'rating', 'vendor', 'gallery',
+            'color', 'specification', 'size',
+            'rating_count', 'pid', 'slug', 'type', 'solde',
+        ]
+
+    def get_gallery(self, obj):
+        request = self.context.get('request')
+        return [
+            request.build_absolute_uri(g.image.url) if request else g.image.url
+            for g in obj.gallery_set.all()
+            if g.image
+        ]
+
+    def get_type(self, obj):
+        return "product"
+
+
+class VendorReviewSerializer(serializers.ModelSerializer):
+    """Avis vendeur — lecture enrichie, écriture minimale."""
+    user_name  = serializers.SerializerMethodField()
+    user_image = serializers.SerializerMethodField()
+
+    class Meta:
+        model  = VendorReview
+        fields = ["id", "user", "user_name", "user_image", "rating", "comment", "date"]
+        read_only_fields = ["id", "user", "date"]
+
+    def get_user_name(self, obj):
+        u = obj.user
+        return getattr(u, "full_name", None) or getattr(u, "username", None) or u.email or "Utilisateur"
+
+    def get_user_image(self, obj):
+        try:
+            profile = obj.user.profile
+            if profile.image:
+                request = self.context.get("request")
+                return request.build_absolute_uri(profile.image.url) if request else str(profile.image.url)
+        except Exception:
+            pass
+        return None
+
+
+class PresentationFeedSerializer(serializers.ModelSerializer):
+    """Serializer présentation allégé pour le feed – likes/comments via annotation."""
+    vendor         = VendorFeedSerializer(read_only=True)
+    type           = serializers.SerializerMethodField()
+    likes_count    = serializers.IntegerField(read_only=True)   # via annotation
+    comments_count = serializers.IntegerField(read_only=True)   # via annotation
+
+    class Meta:
+        model = Presentation
+        fields = ['id', 'title', 'description', 'video', 'vendor', 'link',
+                  'type', 'likes_count', 'comments_count']
+
+    def get_type(self, obj):
+        return "presentation"

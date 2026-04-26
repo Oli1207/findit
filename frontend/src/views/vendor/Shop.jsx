@@ -85,10 +85,16 @@ function Shop() {
 
     fetchProducts();
   }, []);
+ const goBack = () => navigate(-1);
 
   return (
   <div className="shop-container">
   <div className="shop-top-bar">
+       <div className="back-btn">
+          <span onClick={goBack} style={{ cursor: "pointer" }}>
+            ←
+          </span>
+        </div>
     <img src={vendor.image} alt={vendor.name} className="vendor-image" />
     <span className="vendor-name">{vendor.name}</span>
     <span style={{color:'black'}} onClick={() => navigate('/vendor/settings')}><i class="fas fa-cog"></i>

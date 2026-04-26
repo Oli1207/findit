@@ -1,0 +1,3 @@
+PassengerEnabled On
+PassengerAppRoot /home/TON_USER_CPANEL/repositories/findit/backend
+PassengerPython /home/TON_USER_CPANEL/virtualenv/findit/bin/python3

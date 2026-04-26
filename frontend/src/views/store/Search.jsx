@@ -1,887 +1,749 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import apiInstance from "../../utils/axios";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import GetCurrentAddress from "../plugin/UserCountry";
+import { Link, useNavigate } from "react-router-dom";
 import UserData from "../plugin/UserData";
-import CardID from "../plugin/CardID";
 import Swal from "sweetalert2";
-import informationIcon from "../../assets/information.png";
-import { useMediaQuery } from "react-responsive";
 import Review from "./Review";
-import "./tiktokfeed.css";
-import "./search.css"
-import { useSwipeable } from "react-swipeable";
+import "./search.css";
 import { useFollowStore } from "../../store/useFollowStore";
-import { syncOrdersIfOnline } from "./OrderQueue";
 import BottomBar from "./BottomBar";
+import LoginModal from "../auth/LoginModal";
+import ProductSlider from "./ProductSlider";
+import BuyModal from "./BuyModal";
 
 const Toast = Swal.mixin({
-  toast: true,
-  position: "top",
-  showConfirmButton: false,
-  timer: 3000,
-  timerProgressBar: true,
+  toast: true, position: "top", showConfirmButton: false,
+  timer: 3000, timerProgressBar: true, background: "#1a1a1a", color: "#fff",
 });
 
-function Search() {
-  const axios = apiInstance;
-  const [profileData, setProfileData] = useState(null);
-  const [products, setProducts] = useState([]);
-  const [selectedColors, setSelectedColors] = useState({});
-  const [selectedSize, setSelectedSize] = useState({});
-  const [category, setCategory] = useState([]);
-  const [colorValue, setColorValue] = useState("No Color");
-  const [sizeValue, setSizeValue] = useState("No Size");
-  const [qtyValue, setQtyValue] = useState(1);
-  const [searchInput, setSearchInput] = useState("");
-
-  const [orderProduct, setOrderProduct] = useState(null);
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [showCategoriesOnly, setShowCategoriesOnly] = useState(true);
-
-  const [selectedIndex, setSelectedIndex] = useState({});
-  const [useProfileAddress, setUseProfileAddress] = useState(true);
-  const [customAddress, setCustomAddress] = useState({
-    mobile: "",
-    address: "",
-    city: "",
-    state: "",
-    // country: currentAddress.country,
-  });
-  const { followStates, fetchFollowStates, toggleFollow } = useFollowStore();
-  const currentAddress = GetCurrentAddress();
-  const userData = UserData();
-  const cart_id = CardID();
-  const navigate = useNavigate();
-  const [specificationStates, setSpecificationStates] = useState({});
-
-  const toggleSpecifications = (productId) => {
-    setShowSpecifications((prev) => ({
-      ...prev,
-      [productId]: !prev[productId], // Toggle specification visibility for specific product
-    }));
-  };
-
-  useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const response = await apiInstance.get(
-          `user/profile/${userData?.user_id}/`
-        ); // Remplacez par l'URL complète si nécessaire
-        setProfileData(response.data);
-        console.log(response.data);
-      } catch (error) {
-        console.error("Error fetching profile data:", error);
-      }
-    };
-
-    fetchProfile();
-  }, [userData?.user_id]);
-
-  const handleSearchChange = (e) => {
-    setSearchInput(e.target.value);
-  };
-
-  useEffect(() => {
-    if (!searchInput || searchInput.trim() === "") {
-      setShowCategoriesOnly(true);
-    }
-  }, []);
-
-const handleCategoryClick = async (categoryId) => {
-  setShowCategoriesOnly(false); // On passe en mode produits
-  try {
-    const { data } = await apiInstance.get(`category/${categoryId}/`);
-    setProducts(data); // on alimente la feed-container avec les produits de cette catégorie
-  } catch (error) {
-    console.error("Erreur lors de la récupération des produits :", error);
-  }
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+const getUrl = (val) => {
+  if (!val) return null;
+  if (typeof val === "string") return val;
+  if (val?.image) return typeof val.image === "string" ? val.image : val.image?.url || null;
+  return val?.url || val?.path || null;
 };
 
-  const handleSearchSubmit = async (e) => {
-  if (!searchInput || searchInput.trim() === "") {
-    setShowCategoriesOnly(true);
-    return; // si vide, on ne fait pas de recherche
-  } else {
-    setShowCategoriesOnly(false);
-  }
+const normalizeItems = (arr) =>
+  (arr || []).map((item) => ({
+    ...item,
+    type:    item.type || "product",
+    image:   getUrl(item.image) || getUrl(item.cover) || null,
+    gallery: (item.gallery || []).map((g) => getUrl(g) || getUrl(g?.image)).filter(Boolean),
+  }));
 
-    try {
-      const response = await apiInstance.get(`search/?query=${searchInput}`);
-      setProducts(response.data);
-      const vendorIds = response.data
-        .map((p) => p.vendor?.id)
-        .filter((id) => id);
-      fetchFollowStates(vendorIds, userData?.user_id);
-    } catch (error) {
-      console.error("Erreur lors de la recherche :", error);
-    }
-  };
-
-  // useEffect(() => {
-  //   apiInstance.get(`search/?query=${query}`).then((response) => {
-  //     setProducts(response.data);
-  //     console.log(response.data);
-  //     const vendorIds = response.data
-  //       .map((p) => p.vendor?.id)
-  //       .filter((id) => id);
-  //     fetchFollowStates(vendorIds, userData?.user_id);
-  //   });
-  // }, [query]);
-
+function useDebounce(value, delay) {
+  const [deb, setDeb] = useState(value);
   useEffect(() => {
-    apiInstance.get("category/").then((response) => {
-      setCategory(response.data);
-    });
+    const t = setTimeout(() => setDeb(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return deb;
+}
+
+const TABS = [
+  { key: "all",      label: "Tout",     icon: "fas fa-border-all" },
+  { key: "products", label: "Produits", icon: "fas fa-shopping-bag" },
+  { key: "videos",   label: "Vidéos",   icon: "fas fa-play-circle" },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+export default function Search() {
+  const navigate = useNavigate();
+  const userData = UserData();
+  const { followStates, fetchFollowStates, toggleFollow } = useFollowStore();
+
+  // ── Data ──────────────────────────────────────────────────────────────────
+  const [profileData,    setProfileData]    = useState(null);
+  const [categories,     setCategories]     = useState([]);
+  const [items,          setItems]          = useState([]);
+  const [searchInput,    setSearchInput]    = useState("");
+  const [activeCategory, setActiveCategory] = useState(null);
+  const [activeTab,      setActiveTab]      = useState("all");  // all|products|videos
+  const [mode,           setMode]           = useState("categories");
+  const [isSearching,    setIsSearching]    = useState(false);
+  const [nextPageUrl,    setNextPageUrl]    = useState(null);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
+
+  const debouncedQuery = useDebounce(searchInput, 400);
+  const loaderRef      = useRef(null);
+
+  // ── Lightbox TikTok ───────────────────────────────────────────────────────
+  const [lightboxOpen,  setLightboxOpen]  = useState(false);
+  const [lightboxList,  setLightboxList]  = useState([]);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const snapRef   = useRef(null);
+  const videoRefs = useRef([]);
+
+  // ── Overlays ──────────────────────────────────────────────────────────────
+  const [orderProduct,    setOrderProduct]    = useState(null);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedPresentation, setSelectedPresentation] = useState(null); // comments
+  const [commentValue,    setCommentValue]    = useState("");
+  const [replyingTo,      setReplyingTo]      = useState(null);
+  const [replyValue,      setReplyValue]      = useState("");
+  const [showLogin,       setShowLogin]       = useState(false);
+
+  // ── Fetch profile ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!userData?.user_id) return;
+    apiInstance.get(`user/profile/${userData.user_id}/`)
+      .then((r) => setProfileData(r.data)).catch(() => {});
+  }, [userData?.user_id]);
+
+  // ── Fetch categories ──────────────────────────────────────────────────────
+  useEffect(() => {
+    apiInstance.get("category/")
+      .then((r) => setCategories(r.data.results || r.data || []))
+      .catch(() => setCategories([]));
   }, []);
 
-  const handleReviewIconClick = (product) => {
-    setSelectedProduct(product);
-  };
-
-  const handleCloseReview = () => {
-    setSelectedProduct(null);
-  };
-  const handleOrderClick = (product) => {
-    setOrderProduct(product);
-  };
-
-  const handleCloseOrder = () => {
-    setOrderProduct(null);
-  };
-
-  const handleColorButtonClick = (product_id, colorName) => {
-    setColorValue(colorName);
-    setSelectedColors((prevSelectedColors) => ({
-      ...prevSelectedColors,
-      [product_id]: colorName,
-    }));
-  };
-
-  const handleSizeButtonClick = (product_id, sizeName) => {
-    setSizeValue(sizeName);
-    setSelectedSize((prevSelectedSize) => ({
-      ...prevSelectedSize,
-      [product_id]: sizeName,
-    }));
-  };
-
-  const handleQtyChange = (event) => {
-    setQtyValue(event.target.value);
-  };
-
-  const handlePlaceOrder = async (product_id, price, vendor_id) => {
-    const formData = new FormData();
-    formData.append("product_id", product_id);
-    formData.append("user_id", userData?.user_id);
-    formData.append("qty", qtyValue);
-    formData.append("price", price);
-    formData.append("vendor", vendor_id);
-    formData.append("size", sizeValue);
-    formData.append("color", colorValue);
-    formData.append("full_name", userData?.full_name);
-
-    if (
-      useProfileAddress &&
-      profileData?.mobile &&
-      profileData?.address &&
-      profileData?.city
-    ) {
-      // On utilise le profil existant
-      formData.append("mobile", profileData.mobile);
-      formData.append("address", profileData.address);
-      formData.append("city", profileData.city);
-      formData.append("state", profileData.state);
-      formData.append("country", profileData.country);
-    } else {
-      // Sinon on prend les valeurs du formulaire
-      formData.append("mobile", customAddress.mobile);
-      formData.append("address", customAddress.address);
-      formData.append("city", customAddress.city);
-
-      // On met à jour le profil en même temps
-      const profileForm = new FormData();
-      profileForm.append("mobile", customAddress.mobile);
-      profileForm.append("address", customAddress.address);
-      profileForm.append("city", customAddress.city);
-
-      await axios.patch(`user/profile/${userData?.user_id}/`, profileForm);
+  // ── Search on debounced query or tab change ───────────────────────────────
+  useEffect(() => {
+    if (!debouncedQuery.trim() && !activeCategory) {
+      setMode("categories");
+      setItems([]);
+      setNextPageUrl(null);
+      return;
     }
+    if (debouncedQuery.trim()) runSearch(debouncedQuery.trim());
+    else if (activeCategory) runCategorySearch(activeCategory, activeTab);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedQuery, activeTab]);
 
+  const buildParams = (extra = {}) => ({
+    type: activeTab,
+    page: 1,
+    ...extra,
+  });
+
+  const runSearch = async (q) => {
+    setIsSearching(true);
+    setMode("results");
+    setActiveCategory(null);
     try {
-      console.log(formData.values);
-      const response = await axios.post(`create-order/`, formData);
-      Swal.fire({
-        icon: "success",
-        title: "Commande passée avec succès !",
-        text: response.data.message,
+      const { data } = await apiInstance.get("search/", { params: buildParams({ query: q }) });
+      const list = normalizeItems(data.results || []);
+      setItems(list);
+      setNextPageUrl(data.next || null);
+      syncFollowStates(list);
+    } catch { setItems([]); }
+    finally { setIsSearching(false); }
+  };
+
+  const runCategorySearch = async (cat, tab = activeTab) => {
+    setIsSearching(true);
+    setMode("results");
+    try {
+      const { data } = await apiInstance.get("search/", {
+        params: buildParams({ category_id: cat.id, type: tab }),
       });
-      setOrderProduct(null);
-    } catch (error) {
-      Swal.fire({
-        icon: "error",
-        title: "Échec commande",
-        text: error.response?.data?.message || "Erreur réseau",
-      });
+      const list = normalizeItems(data.results || []);
+      setItems(list);
+      setNextPageUrl(data.next || null);
+      syncFollowStates(list);
+    } catch { setItems([]); }
+    finally { setIsSearching(false); }
+  };
+
+  const handleCategoryClick = async (cat) => {
+    setActiveCategory(cat);
+    setSearchInput("");
+    setActiveTab("all");
+    await runCategorySearch(cat, "all");
+  };
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    if (mode === "results") {
+      if (searchInput.trim()) runSearch(searchInput.trim());
+      else if (activeCategory) runCategorySearch(activeCategory, tab);
     }
+  };
+
+  const syncFollowStates = (list) => {
+    const ids = list.map((p) => p.vendor?.id).filter(Boolean);
+    if (ids.length) fetchFollowStates(ids, userData?.user_id);
+  };
+
+  const handleBack = () => {
+    setMode("categories");
+    setItems([]);
+    setSearchInput("");
+    setNextPageUrl(null);
+    setActiveCategory(null);
+  };
+
+  // ── Infinite scroll ───────────────────────────────────────────────────────
+  const fetchMore = useCallback(async () => {
+    if (!nextPageUrl || isFetchingMore) return;
+    setIsFetchingMore(true);
+    try {
+      const params = nextPageUrl.startsWith("?")
+        ? Object.fromEntries(new URLSearchParams(nextPageUrl.slice(1)))
+        : {};
+      const { data } = await apiInstance.get("search/", {
+        params: { ...params, type: activeTab },
+      });
+      const list = normalizeItems(data.results || []);
+      setItems((prev) => [...prev, ...list]);
+      setNextPageUrl(data.next || null);
+    } catch { /* ignore */ }
+    finally { setIsFetchingMore(false); }
+  }, [nextPageUrl, isFetchingMore, activeTab]);
+
+  useEffect(() => {
+    const el = loaderRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([e]) => { if (e.isIntersecting) fetchMore(); },
+      { rootMargin: "200px" }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [fetchMore]);
+
+  // ── Lightbox ──────────────────────────────────────────────────────────────
+  const openLightbox = (idx) => {
+    videoRefs.current = [];
+    setLightboxList(items);
+    setLightboxIndex(idx);
+    setLightboxOpen(true);
+    document.body.style.overflow = "hidden";
+  };
+
+  const closeLightbox = () => {
+    setLightboxOpen(false);
+    document.body.style.overflow = "";
+    videoRefs.current.forEach((v) => v?.pause());
+  };
+
+  useEffect(() => {
+    if (!lightboxOpen || !snapRef.current) return;
+    snapRef.current.scrollTop = lightboxIndex * window.innerHeight;
+  }, [lightboxOpen, lightboxIndex]);
+
+  // Autoplay dans la lightbox
+  useEffect(() => {
+    if (!lightboxOpen || !snapRef.current) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          const v = e.target;
+          if (e.isIntersecting) {
+            videoRefs.current.forEach((x) => x && x !== v && x.pause());
+            v.play().catch(() => {});
+          } else v.pause();
+        });
+      },
+      { root: snapRef.current, threshold: 0.6 }
+    );
+    videoRefs.current.forEach((v) => v && obs.observe(v));
+    return () => obs.disconnect();
+  }, [lightboxOpen, lightboxList]);
+
+  // ── Actions ───────────────────────────────────────────────────────────────
+  const handleOrderClick = (item) => {
+    if (!userData) { setShowLogin(true); return; }
+    setOrderProduct(item);
   };
 
   const addToWishList = async (productId) => {
-    const formdata = new FormData();
-    formdata.append("product_id", productId);
-    formdata.append("user_id", userData?.user_id);
-
-    const response = await axios.post(
-      `customer/wishlist/${userData?.user_id}/`,
-      formdata
-    );
-    Swal.fire({
-      icon: "success",
-      title: response.data.message,
-    });
+    if (!userData) { setShowLogin(true); return; }
+    const fd = new FormData();
+    fd.append("product_id", productId);
+    fd.append("user_id", userData.user_id);
+    try {
+      const { data } = await apiInstance.post(`customer/wishlist/${userData.user_id}/`, fd);
+      Toast.fire({ icon: "success", title: data.message });
+    } catch { Toast.fire({ icon: "error", title: "Erreur wishlist" }); }
   };
 
-  const toggleSpecification = (productId) => {
-    setSpecificationStates((prev) => ({
-      ...prev,
-      [productId]: !prev[productId],
-    }));
+  const handleLike = async (id) => {
+    if (!userData) { setShowLogin(true); return; }
+    try {
+      const res = await apiInstance.post(`presentations/${id}/like/`, { user: userData.user_id });
+      setItems((prev) =>
+        prev.map((it) =>
+          it.id === id && it.type === "presentation"
+            ? { ...it, likes_count: res.data.likes_count }
+            : it
+        )
+      );
+      setLightboxList((prev) =>
+        prev.map((it) =>
+          it.id === id && it.type === "presentation"
+            ? { ...it, likes_count: res.data.likes_count }
+            : it
+        )
+      );
+    } catch { Toast.fire({ icon: "error", title: "Erreur like" }); }
   };
 
-  const handleViewProduct = (product) => {
-    window.open(product.url, "_blank");
-  };
-
-  const handlers = useSwipeable({
-    onSwipedLeft: () => {
-      setSelectedIndex((prev) => ({
-        ...prev,
-        [item.id]: Math.min((prev[item.id] || 0) + 1, totalImages - 1),
-      }));
-    },
-    onSwipedRight: () => {
-      setSelectedIndex((prev) => ({
-        ...prev,
-        [item.id]: Math.max((prev[item.id] || 0) - 1, 0),
-      }));
-    },
-    trackMouse: true,
-  });
-  const handleCopyLink = (product) => {
-    const url = `${window.location.origin}/detail/${product.slug}`;
-    navigator.clipboard
-      .writeText(url)
-      .then(() => {
-        Swal.fire({
-          toast: true,
-          position: "bottom",
-          icon: "success",
-          title: "Lien copié dans le presse-papier",
-          showConfirmButton: false,
-          timer: 2000,
-        });
-      })
-      .catch((err) => {
-        console.error("Erreur copie lien :", err);
+  const handleComment = async (e, presentationId, content, parentId = null) => {
+    e.preventDefault();
+    if (!userData) { setShowLogin(true); return; }
+    if (!content.trim()) return;
+    try {
+      const res = await apiInstance.post("comments/create/", {
+        presentation: presentationId, content, user: userData.user_id, parent: parentId,
       });
+      setSelectedPresentation((prev) => {
+        if (!prev) return prev;
+        if (parentId) {
+          return {
+            ...prev,
+            comments: prev.comments.map((c) =>
+              c.id === parentId ? { ...c, replies: [...(c.replies || []), res.data] } : c
+            ),
+          };
+        }
+        return { ...prev, comments: [...(prev.comments || []), res.data] };
+      });
+      if (parentId) { setReplyValue(""); setReplyingTo(null); }
+      else setCommentValue("");
+    } catch { Toast.fire({ icon: "error", title: "Erreur commentaire" }); }
   };
-  useEffect(() => {
-    const syncOnReconnect = () => {
-      if (navigator.onLine) {
-        syncOrdersIfOnline();
-      }
-    };
 
-    window.addEventListener("online", syncOnReconnect);
-    syncOnReconnect(); // tentative immédiate si connecté
+  const copyLink = (item) => {
+    const url = item.type === "presentation"
+      ? `${window.location.origin}/?presentation=${item.id}`
+      : `${window.location.origin}/detail/${item.slug}`;
+    navigator.clipboard.writeText(url);
+    Toast.fire({ icon: "success", title: "Lien copié !" });
+  };
 
-    return () => {
-      window.removeEventListener("online", syncOnReconnect);
-    };
-  }, []);
+  const fmtPrice = (n) => Math.round(Number(n)).toLocaleString("fr-FR");
+
+  // ── Stats ─────────────────────────────────────────────────────────────────
+  const productsCount = items.filter((i) => i.type === "product").length;
+  const videosCount   = items.filter((i) => i.type === "presentation").length;
+
+  // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div className="app-container">
-     <div className="top-bar-search">
-  <form
-    className="search-form-search"
-    onSubmit={(e) => {
-      e.preventDefault();
-      handleSearchSubmit();
-    }}
-  >
-    <input
-      className="form-control"
-      type="text"
-      placeholder="chemise, jean..."
-      value={searchInput}
-      onChange={handleSearchChange}
-    />
-    <button type="submit" className="btn btn-outline-success">
-      <i className="fas fa-search"></i>
-    </button>
-  </form>
-</div>
+    <div className="srch-root">
+      <LoginModal show={showLogin} onClose={() => setShowLogin(false)} />
 
-
-      
-        {showCategoriesOnly ? (
-          <div className="feed-container"> 
-          <div className="categories-fullscreen">
-            {category?.map((c, index) => (
-            
-              <div
-                key={index}
-                className="category-card"
-                onClick={() => handleCategoryClick(c.id)}
-              >
-                <img src={c.image} alt={c.title} />
-                <h3>{c.title}</h3>
-              
-              </div>
-            ))}
-            </div>
-          </div>
+      {/* ── Header fixe ─────────────────────────────────────────────────── */}
+      <header className="srch-header">
+        {mode === "results" ? (
+          <button className="srch-back-btn" onClick={handleBack} aria-label="Retour">
+            <i className="fas fa-arrow-left" />
+          </button>
         ) : (
-          <div className="feed-container">
-            {products.map((item, index) => (
-              <div
-                className="feed-item"
-                data-id={`${item.type}-${item.id}`}
-                key={`${item.type}-${item.id}`}
-              >
-                {/* Si c'est un produit */}
-                {item.type === "product" ? (
-                  <>
-                    <div className="feed-image">
-                      <div
-                        {...handlers}
-                        className="feed-slider"
-                        style={{
-                          display: "flex",
-                          transform: `translateX(-${
-                            (selectedIndex[item.id] || 0) * 100
-                          }%)`,
-                          transition: "transform 0.3s ease",
-                          width: "100%",
-                          height: "100%",
-                        }}
-                      >
-                        {[item.image, ...(item.gallery || [])].map(
-                          (img, imgIndex) => (
-                            <img
-                              key={imgIndex}
-                              src={img}
-                              className="feed-slide-image"
-                              alt={item.title}
-                              style={{
-                                minWidth: "100%",
-                                height: "100%",
-                                objectFit: "cover",
-                              }}
-                            />
-                          )
-                        )}
-                      </div>
+          <i className="fas fa-search srch-header-icon" />
+        )}
+        <div className="srch-input-wrap">
+          <input
+            className="srch-input"
+            type="text"
+            placeholder="chemise, robe, haul…"
+            value={searchInput}
+            autoComplete="off"
+            onChange={(e) => setSearchInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
+          />
+          {searchInput && (
+            <button className="srch-clear-btn" onClick={() => setSearchInput("")}>
+              <i className="fas fa-times" />
+            </button>
+          )}
+        </div>
+      </header>
 
-                      {/* Points de navigation */}
-                      <div
-                        className="feed-dots"
-                        style={{
-                          position: "absolute",
-                          bottom: "10px",
-                          left: "50%",
-                          transform: "translateX(-50%)",
-                          display: "flex",
-                          gap: "5px",
-                          zIndex: "10",
-                        }}
-                      >
-                        {[item.image, ...(item.gallery || [])].map(
-                          (_, imgIndex) => (
-                            <span
-                              key={imgIndex}
-                              className={`feed-dot ${
-                                (selectedIndex[item.id] || 0) === imgIndex
-                                  ? "active"
-                                  : ""
-                              }`}
-                              onClick={() =>
-                                setSelectedIndex((prev) => ({
-                                  ...prev,
-                                  [item.id]: imgIndex,
-                                }))
-                              }
-                              style={{
-                                width: "8px",
-                                height: "8px",
-                                borderRadius: "50%",
-                                background:
-                                  (selectedIndex[item.id] || 0) === imgIndex
-                                    ? "white"
-                                    : "rgba(255,255,255,0.5)",
-                                cursor: "pointer",
-                              }}
-                            />
-                          )
-                        )}
-                      </div>
-                    </div>
+      {/* ── Lightbox TikTok ─────────────────────────────────────────────── */}
+      {lightboxOpen && (
+        <div className="srch-lb-overlay">
+          <button className="srch-lb-close" onClick={closeLightbox}>
+            <i className="fas fa-times" />
+          </button>
+          <div className="srch-lb-snap" ref={snapRef}>
+            {lightboxList.map((item, idx) => (
+              <div key={`lb-${item.type}-${item.id}`} className="srch-lb-item">
+                {/* Média */}
+                <div className="srch-lb-media">
+                  {item.type === "presentation" ? (
+                    <video
+                      ref={(el) => { if (el) videoRefs.current[idx] = el; }}
+                      src={item.video}
+                      className="srch-lb-video"
+                      loop muted playsInline
+                      onClick={(e) => e.target.paused ? e.target.play() : e.target.pause()}
+                    />
+                  ) : (
+                    <ProductSlider item={item} />
+                  )}
+                </div>
 
-                    <div className="info">
-                      <Link
-                        to={
-                          item.vendor?.user === userData?.user_id
-                            ? `/vendor/${item.vendor?.slug}/`
-                            : `/customer/${item.vendor?.slug}/`
-                        }
-                        style={{ fontWeight: "bold", fontSize: "15px" }}
-                        className="ms-2"
-                      >
-                        {item.vendor?.name}
-                      </Link>
+                <div className="srch-lb-gradient" />
 
-                      <h2>
-                        <Link to={`/detail/${item.slug}`}>{item.title}</Link>
-                      </h2>
-                      <p style={{ color: "white" }}>{item.description}</p>
-                      <p
-                        style={{
-                          fontSize: "15px",
-                          fontWeight: "500",
-                          color: "#DF468F",
-                        }}
-                      >
-                        {item.price} frs
-                      </p>
-                      <p>{item?.category?.title}</p>
-
-                      {/* Spécifications */}
-                      <div className="specifications mt-2">
-                        {item.specification &&
-                          item.specification.length > 0 && (
-                            <>
-                              <p
-                                onClick={() => toggleSpecification(item.id)}
-                                style={{
-                                  cursor: "pointer",
-                                  color: "#ffffff",
-                                  fontSize: "14px",
-                                  margin: 0,
-                                  display: "flex",
-                                  alignItems: "center",
-                                }}
-                              >
-                                <i className="fas fa-info-circle me-2" />
-                                Spécifications
-                              </p>
-
-                              {specificationStates[item.id] && (
-                                <div
-                                  className="text-white mt-2 small"
-                                  style={{
-                                    maxHeight: "200px",
-                                    overflowY: "auto",
-                                  }}
-                                >
-                                  {item.specification
-                                    .slice(0, 3)
-                                    .map((spec, index) => (
-                                      <div key={index} className="mb-1">
-                                        <strong>{spec.title}:</strong>{" "}
-                                        {spec.content}
-                                      </div>
-                                    ))}
-                                </div>
-                              )}
-                            </>
-                          )}
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="actions">
-                      <Link
-                        to={
-                          item.vendor?.user === userData?.user_id
-                            ? `/vendor/${item.vendor?.slug}/`
-                            : `/customer/${item.vendor?.slug}/`
-                        }
-                      >
-                        <img
-                          src={item.vendor?.image}
-                          className="rounded-circle"
-                          alt={item.vendor?.name}
-                          style={{
-                            height: "40px",
-                            width: "50px",
-                            objectFit: "cover",
-                            margin: "10px",
-                          }}
-                        />
-                      </Link>
-
-                      {item.vendor?.user !== userData?.user_id && (
-                        <span
-                          onClick={() =>
-                            toggleFollow(userData?.user_id, item.vendor?.id)
-                          }
-                          style={{
-                            cursor: "pointer",
-                            padding: "4px 10px",
-                            borderRadius: "15px",
-                            backgroundColor: followStates[item.vendor?.id]
-                              ? "#e0e0e0"
-                              : "#007bff",
-                            color: followStates[item.vendor?.id]
-                              ? "#333"
-                              : "#fff",
-                            fontSize: "12px",
-                            fontWeight: 500,
-                            marginLeft: "10px",
-                          }}
-                        >
-                          {followStates[item.vendor?.id] ? (
-                            ""
-                          ) : (
-                            <i className="fas fa-plus" />
-                          )}
-                        </span>
+                {/* Info bas-gauche */}
+                <div className="srch-lb-info">
+                  <Link
+                    to={item.vendor?.user === userData?.user_id ? "/profile/" : `/customer/${item.vendor?.slug}/`}
+                    className="srch-lb-vendor"
+                  >
+                    @{item.vendor?.name}
+                  </Link>
+                  <h2 className="srch-lb-title">{item.title}</h2>
+                  {item.type === "product" && item.price && (
+                    <p className="srch-lb-price">
+                      {item.old_price && Number(item.old_price) > Number(item.price) && (
+                        <span className="srch-lb-old-price">{fmtPrice(item.old_price)} frs</span>
                       )}
-
-                      <div className="action-btn">
-                        <i className="fas fa-star" />
-                        <span>
-                          {item.rating ? item.rating.toFixed(1) : "0.0"}
-                        </span>
-                      </div>
-                      <div
-                        className="action-btn"
-                        onClick={() => handleReviewIconClick(item)}
+                      {fmtPrice(item.price)} frs
+                    </p>
+                  )}
+                  {item.type === "product" && (
+                    <div className="srch-lb-cta-row">
+                      <button
+                        className="srch-lb-buy-btn"
+                        onClick={(e) => { e.stopPropagation(); handleOrderClick(item); }}
                       >
+                        <i className="fas fa-shopping-bag" /> Acheter
+                      </button>
+                      <button
+                        className="srch-lb-wish-btn"
+                        onClick={(e) => { e.stopPropagation(); addToWishList(item.id); }}
+                        title="Favoris"
+                      >
+                        <i className="fas fa-heart" />
+                      </button>
+                    </div>
+                  )}
+                  {item.type === "presentation" && item.description && (
+                    <p className="srch-lb-desc">{item.description}</p>
+                  )}
+                  {item.category && (
+                    <span className="srch-lb-category-tag">{item.category.title}</span>
+                  )}
+                </div>
+
+                {/* Actions droite */}
+                <div className="srch-lb-actions">
+                  <Link to={item.vendor?.user === userData?.user_id ? "/profile/" : `/customer/${item.vendor?.slug}/`}>
+                    <img src={item.vendor?.image} className="srch-lb-avatar" alt="" />
+                  </Link>
+
+                  {item.vendor?.user !== userData?.user_id && (
+                    <button
+                      className={`follow-pill${followStates[item.vendor?.id] ? " followed follow-pill-light" : ""}`}
+                      onClick={() => userData ? toggleFollow(userData.user_id, item.vendor?.id) : setShowLogin(true)}
+                    >
+                      {followStates[item.vendor?.id] ? "Abonné" : <i className="fas fa-plus" />}
+                    </button>
+                  )}
+
+                  {/* ── Actions selon type ── */}
+                  {item.type === "product" ? (
+                    <>
+                      <button className="srch-lb-action-btn" title="Note">
+                        <i className="fas fa-star" />
+                        <span>{item.rating ? Number(item.rating).toFixed(1) : "0.0"}</span>
+                      </button>
+                      <button className="srch-lb-action-btn" onClick={() => setSelectedProduct(item)} title="Avis">
                         <i className="fas fa-comment-dots" />
                         <span>{item.rating_count || 0}</span>
-                      </div>
-                      <div
-                        className="action-btn"
-                        onClick={() => handleOrderClick(item)}
-                      >
+                      </button>
+                      <button className="srch-lb-action-btn" onClick={() => handleOrderClick(item)} title="Commander">
                         <i className="fas fa-shopping-cart" />
-                      </div>
-                      <div
-                        className="action-btn"
-                        onClick={() => handleCopyLink(item)}
+                      </button>
+                      <button className="srch-lb-action-btn" onClick={() => addToWishList(item.id)} title="Favoris">
+                        <i className="fas fa-heart" />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button className="srch-lb-action-btn" onClick={() => handleLike(item.id)} title="J'aime">
+                        <i className="fas fa-heart" />
+                        <span>{item.likes_count || 0}</span>
+                      </button>
+                      <button
+                        className="srch-lb-action-btn"
+                        onClick={() => setSelectedPresentation(lightboxList[idx])}
+                        title="Commentaires"
                       >
-                        <i className="fas fa-link" />
+                        <i className="fas fa-comment-dots" />
+                        <span>{item.comments_count || 0}</span>
+                      </button>
+                    </>
+                  )}
+
+                  <button className="srch-lb-action-btn" onClick={() => copyLink(item)} title="Partager">
+                    <i className="fas fa-link" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Overlay Review ──────────────────────────────────────────────── */}
+      {selectedProduct && (
+        <div className="srch-overlay" onClick={(e) => e.target === e.currentTarget && setSelectedProduct(null)}>
+          <div className="srch-panel">
+            <div className="srch-panel-handle" />
+            <button className="srch-panel-close" onClick={() => setSelectedProduct(null)}>
+              <i className="fas fa-times" />
+            </button>
+            <Review product={selectedProduct} userData={userData}
+              onReviewStatsChange={(id, stats) =>
+                setItems((prev) => prev.map((p) => p.id === id ? { ...p, ...stats } : p))
+              }
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ── Overlay Commentaires vidéo ───────────────────────────────────── */}
+      {selectedPresentation && (
+        <div className="srch-overlay" onClick={(e) => e.target === e.currentTarget && setSelectedPresentation(null)}>
+          <div className="srch-panel">
+            <div className="srch-panel-handle" />
+            <button className="srch-panel-close" onClick={() => { setSelectedPresentation(null); setReplyingTo(null); }}>
+              <i className="fas fa-times" />
+            </button>
+            <h4 style={{ color: "#f0f0f0", fontSize: 15, fontWeight: 700, marginBottom: 16 }}>
+              <i className="fas fa-comment-dots" style={{ marginRight: 8, color: "#DF468F" }} />
+              Commentaires
+            </h4>
+            <div style={{ maxHeight: 300, overflowY: "auto", marginBottom: 14 }}>
+              {(selectedPresentation.comments || [])
+                .filter((c) => c.parent === null)
+                .map((comment) => (
+                  <div key={comment.id} style={{ marginBottom: 14 }}>
+                    <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                      <div style={{ flex: 1 }}>
+                        <span style={{ fontWeight: 700, color: "#f0f0f0", fontSize: 13 }}>{comment.display_name}</span>
+                        <span style={{ color: "#aaa", fontSize: 13, marginLeft: 8 }}>{comment.content}</span>
                       </div>
+                      <button
+                        onClick={() => setReplyingTo(comment.id)}
+                        style={{ background: "none", border: "none", color: "#888", fontSize: 12, cursor: "pointer" }}
+                      >
+                        Répondre
+                      </button>
                     </div>
-                  </>
-                ) : (
-                  // Si c’est une présentation vidéo
+                    {(comment.replies || []).map((r) => (
+                      <div key={r.id} style={{ marginLeft: 20, marginTop: 6, color: "#aaa", fontSize: 12, fontStyle: "italic" }}>
+                        ↳ <strong style={{ color: "#ccc" }}>{r.display_name}</strong> {r.content}
+                      </div>
+                    ))}
+                    {replyingTo === comment.id && (
+                      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                        <input
+                          className="srch-form-input"
+                          placeholder="Votre réponse…"
+                          value={replyValue}
+                          onChange={(e) => setReplyValue(e.target.value)}
+                          style={{ flex: 1, padding: "8px 12px", fontSize: 13 }}
+                        />
+                        <button
+                          className="srch-btn-paystack"
+                          style={{ width: "auto", padding: "8px 14px", fontSize: 13 }}
+                          onClick={(e) => handleComment(e, selectedPresentation.id, replyValue, comment.id)}
+                        >
+                          Envoyer
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                className="srch-form-input"
+                placeholder="Votre commentaire…"
+                value={commentValue}
+                onChange={(e) => setCommentValue(e.target.value)}
+                style={{ flex: 1, padding: "10px 14px" }}
+              />
+              <button
+                className="srch-btn-paystack"
+                style={{ width: "auto", padding: "10px 16px" }}
+                onClick={(e) => handleComment(e, selectedPresentation.id, commentValue)}
+              >
+                <i className="fas fa-paper-plane" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal commande ──────────────────────────────────────────────── */}
+      {orderProduct && (
+        <BuyModal
+          product={orderProduct}
+          userData={userData}
+          profileData={profileData}
+          onClose={() => setOrderProduct(null)}
+          onWishlist={(id) => addToWishList(id)}
+        />
+      )}
+
+      {/* ── Contenu principal ────────────────────────────────────────────── */}
+      <main className="srch-main">
+
+        {/* ── MODE : Catégories ─────────────────────────────────────────── */}
+        {mode === "categories" && (
+          <>
+            <p className="srch-section-label">Parcourir les catégories</p>
+            <div className="srch-cat-grid">
+              {categories.map((c) => (
+                <div key={c.id} className="srch-cat-card" onClick={() => handleCategoryClick(c)}>
+                  {c.image && <img src={c.image} alt={c.title} className="srch-cat-img" loading="lazy" />}
+                  <div className="srch-cat-overlay">
+                    <span className="srch-cat-label">{c.title}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* ── MODE : Résultats ──────────────────────────────────────────── */}
+        {mode === "results" && (
+          <>
+            {/* Chapeau */}
+            <div className="srch-results-header">
+              {activeCategory ? (
+                <span className="srch-results-title">
+                  <i className="fas fa-th" style={{ marginRight: 6 }} />{activeCategory.title}
+                </span>
+              ) : (
+                <span className="srch-results-title">
+                  Résultats pour <em>"{searchInput || debouncedQuery}"</em>
+                </span>
+              )}
+              {!isSearching && items.length > 0 && (
+                <span className="srch-results-count">{items.length} résultat{items.length > 1 ? "s" : ""}</span>
+              )}
+            </div>
+
+            {/* ── Tabs filtres ──── */}
+            <div className="srch-tabs">
+              {TABS.map((tab) => (
+                <button
+                  key={tab.key}
+                  className={`srch-tab${activeTab === tab.key ? " srch-tab--active" : ""}`}
+                  onClick={() => handleTabChange(tab.key)}
+                >
+                  <i className={tab.icon} />
+                  {tab.label}
+                  {tab.key === "products" && productsCount > 0 && (
+                    <span className="srch-tab-count">{productsCount}</span>
+                  )}
+                  {tab.key === "videos" && videosCount > 0 && (
+                    <span className="srch-tab-count">{videosCount}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* Loading */}
+            {isSearching && (
+              <div className="srch-loading">
+                <div className="srch-spinner" />
+                <span>Recherche en cours…</span>
+              </div>
+            )}
+
+            {/* Grid résultats */}
+            {!isSearching && items.length > 0 && (
+              <div className="srch-product-grid">
+                {items.map((item, idx) => (
                   <div
-                    className="feed-item"
-                    data-id={`${item.type}-${item.id}`}
-                    key={`${item.type}-${item.id}`}
+                    key={`${item.type}-${item.id}-${idx}`}
+                    className={`srch-product-card${item.type === "presentation" ? " srch-video-card" : ""}`}
+                    onClick={() => openLightbox(idx)}
                   >
-                    <video
-                      ref={(el) => setVideoRef(el, index)}
-                      autoPlay
-                      src={item.video}
-                      className="feed-image"
-                      muted
-                      loop
-                      playsInline
-                      onClick={(e) => {
-                        const video = e.target;
-                        if (video.paused) {
-                          video.play();
-                        } else {
-                          video.pause();
-                        }
-                      }}
-                      style={{ cursor: "pointer" }}
-                    />
-
-                    <div className="overlay"></div>
-
-                    <div className="info">
-                      <h3
-                        style={{
-                          textShadow: "0 0 9px rgba(0, 0, 0, 0.6)",
-                          color: "white",
-                        }}
-                      >
-                        {item.vendor?.name}
-                      </h3>
-                      <h2
-                        style={{
-                          textShadow: "0 0 9px rgba(0, 0, 0, 0.6)",
-                          color: "white",
-                        }}
-                      >
-                        {item.title}
-                      </h2>
-                      <p
-                        style={{
-                          textShadow: "0 0 9px rgba(0, 0, 0, 0.6)",
-                          color: "white",
-                        }}
-                      >
-                        {item.description}
-                      </p>
-                      {item.link && (
-                        <a href={item.link} target="_blank" rel="noreferrer">
-                          {item.link}
-                        </a>
+                    <div className="srch-card-img-wrap">
+                      {item.type === "presentation" ? (
+                        <>
+                          {/* Thumbnail vidéo : image vendeur ou poster */}
+                          <img
+                            src={item.vendor?.image || "/icons/web-app-manifest-192x192.png"}
+                            alt={item.title}
+                            className="srch-card-img srch-card-img--video-thumb"
+                            loading="lazy"
+                          />
+                          <div className="srch-video-play-overlay">
+                            <i className="fas fa-play" />
+                          </div>
+                          <span className="srch-badge-video">
+                            <i className="fas fa-video" /> Vidéo
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <img
+                            src={item.image || "/icons/web-app-manifest-192x192.png"}
+                            alt={item.title}
+                            className="srch-card-img"
+                            loading="lazy"
+                          />
+                          {item.solde && <span className="srch-badge-sale">Solde</span>}
+                        </>
                       )}
                     </div>
-
-                    <div className="actions">
-                      <div
-                        style={{ textShadow: "0 0 4px rgba(0, 0, 0, 0.6)" }}
-                        className="action-btn"
-                        onClick={() => handleLike(item.id)}
-                      >
-                        <i className="fas fa-heart" /> {item.likes_count}
-                      </div>
-                      <div
-                        style={{ textShadow: "0 0 4px rgba(0, 0, 0, 0.6)" }}
-                        className="action-btn"
-                        onClick={() => handleCommentIconClick(item)}
-                      >
-                        <i className="fas fa-comment-dots"></i>{" "}
-                        <span>{item.comments?.length || 0}</span>
-                      </div>
-                      <div
-                        style={{ textShadow: "0 0 4px rgba(0, 0, 0, 0.6)" }}
-                        className="action-btn"
-                        onClick={() => copyLink(item.id)}
-                      >
-                        <i className="fas fa-link" />
+                    <div className="srch-card-body">
+                      <p className="srch-card-vendor">@{item.vendor?.name}</p>
+                      <p className="srch-card-title">{item.title || item.description}</p>
+                      <div className="srch-card-footer">
+                        {item.type === "product" ? (
+                          <span className="srch-card-price">
+                            {item.old_price && Number(item.old_price) > Number(item.price) && (
+                              <span className="srch-card-old">{fmtPrice(item.old_price)}</span>
+                            )}
+                            {fmtPrice(item.price)} frs
+                          </span>
+                        ) : (
+                          <span className="srch-card-video-stats">
+                            <i className="fas fa-heart" /> {item.likes_count || 0}
+                            <i className="fas fa-comment-dots" style={{ marginLeft: 8 }} /> {item.comments_count || 0}
+                          </span>
+                        )}
+                        {item.type === "product" && item.rating > 0 && (
+                          <span className="srch-card-rating">
+                            <i className="fas fa-star" /> {Number(item.rating).toFixed(1)}
+                          </span>
+                        )}
+                        {item.category && (
+                          <span className="srch-card-cat-chip">{item.category.title}</span>
+                        )}
                       </div>
                     </div>
                   </div>
-                )}
-                
+                ))}
               </div>
-            ))}
+            )}
 
-          </div>
-        )}
-      {!showCategoriesOnly && products < 1 && (
-        <div className="feed-container">
-        <h5 style={{marginTop:"30px", fontSize: "16px"}} className="p-3">Aucun produit trouvé</h5>
-        </div>
-      )}
-      {selectedProduct && (
-        <div className="review-overlay">
-          <div className="review-panel">
-            <button className="btn-close" onClick={handleCloseReview}>
-              &times;
-            </button>
-            <Review product={selectedProduct} userData={userData} />
-          </div>
-        </div>
-      )}
-      {orderProduct && (
-        <div className="review-overlay">
-          <div className="review-panel">
-            <button className="btn-close" onClick={handleCloseOrder}>
-              &times;
-            </button>
-            <h4 className="mb-3">{orderProduct.title}</h4>
-            {/* Variations */}
-            <div className="mb-3">
-              <label>
-                <b>Quantité :</b>
-              </label>
-              <input
-                type="number"
-                className="form-control"
-                value={qtyValue}
-                min="1"
-                onChange={handleQtyChange}
-              />
+            {/* Aucun résultat */}
+            {!isSearching && items.length === 0 && (
+              <div className="srch-empty">
+                <i className="fas fa-search-minus srch-empty-icon" />
+                <p className="srch-empty-title">Aucun résultat</p>
+                <p className="srch-empty-sub">
+                  {activeCategory
+                    ? `Aucun contenu dans "${activeCategory.title}"`
+                    : `Aucun article pour "${debouncedQuery}"`}
+                </p>
+                <button className="srch-empty-btn" onClick={handleBack}>
+                  Parcourir les catégories
+                </button>
+              </div>
+            )}
+
+            {/* Sentinel infinite scroll */}
+            <div ref={loaderRef} style={{ height: 40, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {isFetchingMore && <div className="srch-spinner srch-spinner-sm" />}
             </div>
-            {orderProduct.size?.length > 0 && (
-              <div className="mb-3">
-                <label>
-                  <b>Taille :</b>
-                </label>
-                <div className="d-flex flex-wrap gap-2">
-                  {orderProduct.size.map((size, index) => (
-                    <button
-                      key={index}
-                      onClick={() =>
-                        handleSizeButtonClick(orderProduct.id, size.name)
-                      }
-                      className="btn btn-outline-primary btn-sm"
-                    >
-                      {size.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            {orderProduct.color?.length > 0 && (
-              <div className="mb-3">
-                <label>
-                  <b>Couleur :</b>
-                </label>
-                <div className="d-flex flex-wrap gap-2">
-                  {orderProduct.color.map((color, index) => (
-                    <button
-                      key={index}
-                      className="btn btn-sm p-3"
-                      style={{ backgroundColor: `${color.color_code}` }}
-                      onClick={() =>
-                        handleColorButtonClick(orderProduct.id, color.name)
-                      }
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-            {/* Utiliser mon adresse */}
-            {profileData?.mobile &&
-            profileData?.address &&
-            profileData?.city ? (
-              <div className="form-check my-3">
-                <input
-                  className="form-check-input"
-                  type="checkbox"
-                  id="useProfileAddress"
-                  checked={useProfileAddress}
-                  onChange={(e) => setUseProfileAddress(e.target.checked)}
-                />
-                <label className="form-check-label" htmlFor="useProfileAddress">
-                  Utiliser mon adresse enregistrée
-                </label>
-              </div>
-            ) : null}
-            {/* /* Si décoché ou adresse inexistante → champs personnalisés  */}
-            {(!useProfileAddress ||
-              !profileData?.mobile ||
-              !profileData?.address ||
-              !profileData?.city) && (
-              <div>
-                <div className="mb-2">
-                  <label>Téléphone</label>
-                  <input
-                    className="form-control"
-                    value={customAddress.mobile}
-                    onChange={(e) =>
-                      setCustomAddress({
-                        ...customAddress,
-                        mobile: e.target.value,
-                      })
-                    }
-                    type="text"
-                  />
-                </div>
-                <div className="mb-2">
-                  <label>Adresse</label>
-                  <input
-                    className="form-control"
-                    value={customAddress.address}
-                    onChange={(e) =>
-                      setCustomAddress({
-                        ...customAddress,
-                        address: e.target.value,
-                      })
-                    }
-                    type="text"
-                  />
-                </div>
-                <div className="mb-2">
-                  <label>Ville</label>
-                  <input
-                    className="form-control"
-                    value={customAddress.city}
-                    onChange={(e) =>
-                      setCustomAddress({
-                        ...customAddress,
-                        city: e.target.value,
-                      })
-                    }
-                    type="text"
-                  />
-                </div>
-              </div>
-            )}
-            {/* Boutons actions */}
-            <button
-              className="btn btn-primary w-100 my-2"
-              onClick={() =>
-                handlePlaceOrder(
-                  orderProduct.id,
-                  orderProduct.price,
-                  orderProduct.vendor?.id
-                )
-              }
-            >
-              <i className="fas fa-shopping-cart me-2" />
-              Commander
-            </button>
-            <button
-              className="btn btn-outline-danger w-100"
-              onClick={() => addToWishList(orderProduct.id)}
-            >
-              <i className="fas fa-heart me-2" />
-              Ajouter en wishlist
-            </button>
-          </div>
-        </div>
-      )}
-      {/* <div
-        className="bottom-bar"
-        style={{
-          position: "fixed",
-          bottom: 0,
-          width: "100%",
-          height: "100px",
-          background: "rgba(0,0,0,0.7)",
-          display: "flex",
-          overflowX: "auto",
-          padding: "10px 15px",
-          gap: "20px",
-          alignItems: "center",
-          zIndex: 10,
-        }}
-      >
-        {category?.map((c, index) => (
-          <div
-            key={index}
-            style={{
-              flex: "0 0 auto",
-              textAlign: "center",
-              color: "white",
-              marginBottom: "60px",
-            }}
-          >
-            <Link
-              to={`/category/${c.id}`} // ou autre route logique
-              className="text-decoration-none text-white"
-            >
-              <img
-                src={c.image}
-                alt={c.title}
-                style={{
-                  width: "70px",
-                  height: "70px",
-                  borderRadius: "50%",
-                  objectFit: "cover",
-                  marginBottom: "5px",
-                }}
-              />
-              <h6 style={{ fontSize: "12px", color: "white" }}>{c.title}</h6>
-            </Link>
-          </div>
-        ))}
-      </div> */}
+          </>
+        )}
+      </main>
 
       <BottomBar />
     </div>
   );
 }
-
-export default Search;

@@ -12,26 +12,27 @@ from rest_framework import generics, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
+
 class OrdersAPIView(generics.ListAPIView):
     serializer_class = CartOrderSerializer
     permission_classes = [AllowAny]
+    pagination_class = None
 
     def get_queryset(self):
-        user_id = self.kwargs['user_id']
-        user = User.objects.get(id=user_id)
+        user = self.request.user
 
         orders = CartOrder.objects.filter(buyer=user)
         return orders
     
+
 class OrderDetailAPIView(generics.RetrieveAPIView):
     serializer_class = CartOrderSerializer
     permission_classes = [AllowAny]
 
     def get_object(self):
-        user_id = self.kwargs['user_id']
         order_oid = self.kwargs['order_oid']
 
-        user = User.objects.get(id=user_id)
+        user = self.request.user
 
         order = CartOrder.objects.get(buyer=user, oid=order_oid)
         return order
@@ -42,9 +43,7 @@ class WishListAPIView(generics.ListCreateAPIView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
-        user_id = self.kwargs['user_id']
-
-        user = User.objects.get(id=user_id)
+        user = self.request.user
         wishlists = Wishlist.objects.filter(user=user)
         return wishlists
     
@@ -52,15 +51,15 @@ class WishListAPIView(generics.ListCreateAPIView):
         payload = request.data
 
         product_id = payload['product_id']
-        user_id = payload['user_id']
+        user = request.user
 
         product = Product.objects.get(id=product_id)
-        user = User.objects.get(id=user_id)
 
         wishlist = Wishlist.objects.filter(product=product, user=user)
         if wishlist:
             wishlist.delete()
-            return Response({"message":"produit retiré de la liste de souhaits"}, status=status.HTTP_200_OK)
+            return Response({"message": "produit retiré de la liste de souhaits"}, status=status.HTTP_200_OK)
         else:
             Wishlist.objects.create(product=product, user=user)
-            return Response({"message":"produit ajouté à la liste de souhaits"}, status=status.HTTP_201_CREATED)
+            return Response({"message": "produit ajouté à la liste de souhaits"}, status=status.HTTP_201_CREATED)
+

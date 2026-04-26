@@ -1,37 +1,47 @@
-import { useEffect } from 'react'
-import { logout } from '../../utils/auth'
-import { Link } from 'react-router-dom'
+// Logout.jsx — Déconnexion Findit
+// Mobile-first · dark theme · zéro Bootstrap
+import { useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { logout } from '../../utils/auth';
+import logo from '../../assets/findit_logoo.png';
+import './auth.css';
 
-function Logout() {
-  useEffect(() => {
-    logout()
-  }, [])
+export default function Logout() {
+  useEffect(() => { logout(); }, []);
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: "110px", padding: '0 20px' }}>
-      {/* Phrase d'accroche à gauche */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', paddingRight: '20px' }}>
-        <h1 style={{ fontSize: '36px', fontWeight: 'bold' }}>Merci d'être passé !</h1>
-        <p style={{ fontSize: '18px', marginTop: '10px' }}>
-          Votre session a été fermée. Découvrez de nouvelles opportunités ou connectez-vous à nouveau pour retrouver vos trouvailles préférées.
-        </p>
-        <Link to="/login" style={{ marginTop: '20px', textDecoration: 'none', color: '#007bff' }}>
-          Se reconnecter
-        </Link>
-      </div>
+    <div className="auth-page">
+      <div className="auth-blob auth-blob--1" />
+      <div className="auth-blob auth-blob--2" />
 
-      {/* Zone de droite avec l'option d'inscription ou connexion */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', textAlign: 'center' }}>
-        <h2>Vous souhaitez revenir ?</h2>
-        <div style={{ marginBottom: '10px' }}>
-          <Link to="/register" style={{ fontSize: '18px', textDecoration: 'none', color: '#007bff' }}>Créer un compte</Link>
+      <div className="auth-card" style={{ textAlign: 'center' }}>
+        <div className="auth-logo-wrap">
+          <img src={logo} alt="Findit" className="auth-logo" />
         </div>
-        <div>
-          <Link to="/login" style={{ fontSize: '18px', textDecoration: 'none', color: '#007bff' }}>Se Connecter</Link>
+
+        <span className="auth-emoji" style={{ fontSize: 52 }}>👋</span>
+
+        <h1 className="auth-headline" style={{ marginBottom: 10 }}>
+          À bientôt !
+        </h1>
+        <p className="auth-subline" style={{ marginBottom: 28 }}>
+          Votre session est fermée. Vos trouvailles préférées vous attendent pour la prochaine fois.
+          <br /><br />
+          <span style={{ fontSize: 18 }}>Prenez soin de vous 🌸</span>
+        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Link to="/login" className="auth-btn" style={{ textDecoration: 'none' }}>
+            <i className="fas fa-sign-in-alt" /> Se reconnecter
+          </Link>
+          <Link to="/register" className="auth-btn-ghost" style={{ textDecoration: 'none' }}>
+            <i className="fas fa-user-plus" /> Créer un compte
+          </Link>
+          <Link to="/" className="auth-btn-ghost" style={{ textDecoration: 'none' }}>
+            <i className="fas fa-home" /> Retour à l'accueil
+          </Link>
         </div>
       </div>
     </div>
-  )
+  );
 }
-
-export default Logout

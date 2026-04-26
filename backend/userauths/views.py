@@ -45,7 +45,7 @@ class GoogleLoginCallback(APIView):
             return Response(status=status.HTTP_400_BAD_REQUEST)
         
         # Remember to replace the localhost:8000 with the actual domain name before deployment
-        token_endpoint_url = urljoin("http://localhost:8000", reverse("google_login"))
+        token_endpoint_url = urljoin("https://backend.findit.deals", reverse("google_login"))
         response = requests.post(url=token_endpoint_url, data={"code": code})
 
         return Response(response.json(), status=status.HTTP_200_OK)
@@ -229,17 +229,40 @@ def send_message(request):
             content=content
         )
 
-        # Serialize and return the message
+        # Bump conversation updated_at so lists re-sort correctly
+        Conversation.objects.filter(id=conversation.id).update(updated_at=timezone.now())
+
         serializer = MessageSerializer(message)
         return Response(serializer.data, status=201)
     except Exception as e:
         return Response({"error": str(e)}, status=500)
 
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_conversation_detail(request, conversation_id):
+    """Return conversation metadata (for chat header)."""
+    try:
+        user_id = request.query_params.get('user_id')
+        user = User.objects.filter(id=user_id).first() if user_id else None
+
+        conversation = Conversation.objects.filter(id=conversation_id).first()
+        if not conversation:
+            return Response({"error": "Conversation not found."}, status=404)
+
+        if user and user != conversation.user and user != conversation.vendor.user:
+            return Response({"error": "Forbidden."}, status=403)
+
+        serializer = ConversationSerializer(conversation, context={'request': request})
+        return Response(serializer.data, status=200)
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)
+
+
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def get_conversation_messages(request, conversation_id):
     try:
-        # Get and validate user_id
         user_id = request.query_params.get('user_id')
         if not user_id:
             return Response({"error": "User ID is required."}, status=400)
@@ -248,18 +271,23 @@ def get_conversation_messages(request, conversation_id):
         if not user:
             return Response({"error": "User not found."}, status=404)
 
-        # Validate conversation
         conversation = Conversation.objects.filter(id=conversation_id).first()
         if not conversation:
             return Response({"error": "Conversation not found."}, status=404)
 
-        # Ensure the user is either the user or the vendor
         if user != conversation.user and user != conversation.vendor.user:
             return Response({"error": "You are not a participant in this conversation."}, status=403)
 
-        # Retrieve messages
-        messages = conversation.messages.order_by('timestamp')
-        serializer = MessageSerializer(messages, many=True)
+        # Delta fetch: only return messages newer than since_id
+        since_id = request.query_params.get('since_id')
+        qs = conversation.messages.order_by('timestamp')
+        if since_id:
+            qs = qs.filter(id__gt=since_id)
+
+        # Mark received messages as read (not sent by this user)
+        qs.exclude(sender=user).filter(is_read=False).update(is_read=True)
+
+        serializer = MessageSerializer(qs, many=True)
         return Response(serializer.data, status=200)
     except Exception as e:
         return Response({"error": str(e)}, status=500)
@@ -323,7 +351,7 @@ class PasswordResetEmailVerify(generics.RetrieveAPIView):
             user.reset_token_created_at = timezone.now()
             user.save()
 
-            link = f"http://localhost:5173/create-new-password?otp={user.otp}&uidb64={uidb64}&reset_token={reset_token}"
+            link = f"https://findit.deals/create-new-password?otp={user.otp}&uidb64={uidb64}&reset_token={reset_token}"
             
             merge_data = {
                 'link': link, 
@@ -385,11 +413,8 @@ def get_conversations_for_user(request):
         if not user:
             return Response({"error": "User not found."}, status=404)
 
-        # Retrieve all conversations where the user is a participant as a client
         conversations = Conversation.objects.filter(user=user).order_by('-updated_at')
-
-        # Serialize conversations
-        serializer = ConversationSerializer(conversations, many=True)
+        serializer = ConversationSerializer(conversations, many=True, context={'request': request})
         return Response(serializer.data, status=200)
     except Exception as e:
         return Response({"error": str(e)}, status=500)
@@ -407,11 +432,8 @@ def get_conversations_for_vendor(request):
         if not vendor:
             return Response({"error": "Vendor not found."}, status=404)
 
-        # Retrieve all conversations where the vendor is a participant
         conversations = Conversation.objects.filter(vendor=vendor).order_by('-updated_at')
-
-        # Serialize conversations
-        serializer = ConversationSerializer(conversations, many=True)
+        serializer = ConversationSerializer(conversations, many=True, context={'request': request})
         return Response(serializer.data, status=200)
     except Exception as e:
         return Response({"error": str(e)}, status=500)

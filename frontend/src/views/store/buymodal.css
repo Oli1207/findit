@@ -1,0 +1,369 @@
+/* =================================================================
+   buymodal.css — BuyModal dark bottom sheet
+   Prefix: bm-
+   ================================================================= */
+
+/* ── Overlay ─────────────────────────────────────────────────────── */
+.bm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  display: flex;
+  align-items: flex-end;
+  animation: bm-fade-in 0.2s ease;
+}
+@keyframes bm-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Feuille ─────────────────────────────────────────────────────── */
+.bm-sheet {
+  width: 100%;
+  max-width: 540px;
+  margin: 0 auto;
+  background: #0f0f0f;
+  border-radius: 24px 24px 0 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
+  padding: 12px 20px 44px;
+  max-height: 92dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  position: relative;
+  animation: bm-slide-up 0.32s cubic-bezier(0.34, 1.15, 0.64, 1);
+}
+.bm-sheet::-webkit-scrollbar { width: 3px; }
+.bm-sheet::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 4px;
+}
+@keyframes bm-slide-up {
+  from { transform: translateY(100%); opacity: 0.7; }
+  to   { transform: translateY(0);    opacity: 1;   }
+}
+
+/* ── Drag handle ─────────────────────────────────────────────────── */
+.bm-handle {
+  width: 36px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 2px;
+  margin: 0 auto 14px;
+}
+
+/* ── Bouton fermer ───────────────────────────────────────────────── */
+.bm-close {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  width: 30px;
+  height: 30px;
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  border-radius: 50%;
+  color: #999;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+.bm-close:hover { background: rgba(255, 255, 255, 0.16); color: #fff; }
+
+/* ── En-tête produit ─────────────────────────────────────────────── */
+.bm-product-head {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 4px;
+}
+.bm-thumb {
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #1a1a1a;
+}
+.bm-product-meta { flex: 1; min-width: 0; }
+.bm-vendor {
+  color: #777;
+  font-size: 12px;
+  margin: 0 0 3px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.bm-title {
+  color: #f0f0f0;
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  line-height: 1.3;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bm-price-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.bm-old-price {
+  color: #555;
+  font-size: 12px;
+  text-decoration: line-through;
+}
+.bm-price {
+  color: #22c55e;
+  font-size: 18px;
+  font-weight: 800;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* ── Séparateur ──────────────────────────────────────────────────── */
+.bm-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.07);
+  margin: 14px 0;
+}
+
+/* ── Section ─────────────────────────────────────────────────────── */
+.bm-section { margin-bottom: 14px; }
+
+.bm-label {
+  display: block;
+  color: #777;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 10px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.bm-selected {
+  color: #f0f0f0;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12px;
+}
+
+/* ── Quantité stepper ────────────────────────────────────────────── */
+.bm-qty-row {
+  display: flex;
+  align-items: center;
+  width: fit-content;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.bm-qty-btn {
+  width: 44px;
+  height: 44px;
+  background: none;
+  border: none;
+  color: #ccc;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, background 0.15s;
+}
+.bm-qty-btn:hover { color: #DF468F; background: rgba(223, 70, 143, 0.08); }
+.bm-qty-val {
+  min-width: 44px;
+  text-align: center;
+  color: #f0f0f0;
+  font-size: 16px;
+  font-weight: 700;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  line-height: 44px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* ── Chips de taille ─────────────────────────────────────────────── */
+.bm-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.bm-chip {
+  padding: 7px 18px;
+  border-radius: 22px;
+  border: 1.5px solid rgba(255, 255, 255, 0.16);
+  background: none;
+  color: #bbb;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.14s;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.bm-chip:hover { border-color: rgba(255, 255, 255, 0.38); color: #fff; }
+.bm-chip--active {
+  border-color: #DF468F;
+  background: rgba(223, 70, 143, 0.13);
+  color: #fff;
+  font-weight: 700;
+}
+
+/* ── Pastilles couleur ───────────────────────────────────────────── */
+.bm-dots { display: flex; flex-wrap: wrap; gap: 10px; }
+.bm-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2.5px solid transparent;
+  cursor: pointer;
+  transition: transform 0.13s, border-color 0.13s;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+.bm-dot:hover { transform: scale(1.14); }
+.bm-dot--active { border-color: #fff; transform: scale(1.12); }
+
+/* ── Checkbox adresse enregistrée ────────────────────────────────── */
+.bm-checkbox-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+.bm-checkbox-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #DF468F;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.bm-checkbox-row span {
+  color: #d0d0d0;
+  font-size: 13px;
+  line-height: 1.4;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.bm-saved-preview {
+  color: #777;
+  font-size: 12px;
+}
+
+/* ── Formulaire adresse ──────────────────────────────────────────── */
+.bm-addr-form { display: flex; flex-direction: column; gap: 10px; }
+
+.bm-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 11px;
+  padding: 11px 14px;
+  transition: border-color 0.15s;
+}
+.bm-field:focus-within {
+  border-color: rgba(223, 70, 143, 0.45);
+}
+.bm-field-icon {
+  color: #555;
+  font-size: 13px;
+  width: 14px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.bm-input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: #f0f0f0;
+  font-size: 14px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.bm-input::placeholder { color: #444; }
+
+/* ── Récapitulatif commande ──────────────────────────────────────── */
+.bm-summary {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 13px;
+  padding: 13px 16px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.bm-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  color: #999;
+  font-size: 13px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.bm-summary-fee { color: #ef4444; }
+.bm-summary-total {
+  color: #f0f0f0;
+  font-size: 15px;
+  font-weight: 700;
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
+  margin-top: 8px;
+  padding-top: 10px;
+}
+
+/* ── Bouton Paystack ─────────────────────────────────────────────── */
+.bm-btn-pay {
+  width: 100%;
+  padding: 15px;
+  border-radius: 14px;
+  border: none;
+  background: linear-gradient(135deg, #0ba4db 0%, #0077b6 100%);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  margin-bottom: 10px;
+  transition: opacity 0.15s, transform 0.12s;
+  box-shadow: 0 4px 18px rgba(11, 164, 219, 0.28);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.bm-btn-pay:hover  { opacity: 0.9; transform: translateY(-1px); }
+.bm-btn-pay:active { opacity: 1;   transform: translateY(0);    }
+
+/* ── Bouton Wishlist ─────────────────────────────────────────────── */
+.bm-btn-wish {
+  width: 100%;
+  padding: 13px;
+  border-radius: 14px;
+  border: 1.5px solid rgba(239, 68, 68, 0.38);
+  background: rgba(239, 68, 68, 0.06);
+  color: #f87171;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background 0.15s, border-color 0.15s;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.bm-btn-wish:hover {
+  background: rgba(239, 68, 68, 0.13);
+  border-color: rgba(239, 68, 68, 0.65);
+}

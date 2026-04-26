@@ -1,0 +1,208 @@
+/* ================================================================
+   loginmodal.css — Bottom sheet d'auth Findit
+   Mobile-first · dark premium · prefix: lm-
+   ================================================================ */
+
+/* ── Overlay ── */
+.lm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 99999;
+  animation: lm-overlay-in 220ms ease-out both;
+}
+.lm-overlay--out {
+  animation: lm-overlay-out 280ms ease-in both;
+}
+@keyframes lm-overlay-in  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes lm-overlay-out { from { opacity: 1; } to { opacity: 0; } }
+
+/* ── Sheet ── */
+.lm-sheet {
+  width: 100%;
+  max-width: 520px;
+  background: #111111;
+  border-radius: 24px 24px 0 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 -12px 60px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 92dvh;
+  animation: lm-sheet-in 280ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  will-change: transform;
+}
+.lm-sheet--out {
+  animation: lm-sheet-out 280ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+@keyframes lm-sheet-in  {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+@keyframes lm-sheet-out {
+  from { transform: translateY(0); }
+  to   { transform: translateY(100%); }
+}
+
+/* ── Drag handle ── */
+.lm-drag-handle {
+  display: flex;
+  justify-content: center;
+  padding: 12px 0 6px;
+  cursor: grab;
+  flex-shrink: 0;
+  touch-action: none;
+}
+.lm-drag-bar {
+  width: 40px;
+  height: 4px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* ── Header ── */
+.lm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  flex-shrink: 0;
+}
+.lm-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.lm-logo {
+  height: 30px;
+  object-fit: contain;
+}
+.lm-header-emoji {
+  font-size: 22px;
+  line-height: 1;
+}
+.lm-header-title {
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #f0f0f0;
+  margin: 0;
+  line-height: 1.3;
+}
+.lm-header-sub {
+  font-family: 'Poppins', sans-serif;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 2px 0 0;
+}
+
+.lm-close {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+.lm-close:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+/* ── Body (scrollable) ── */
+.lm-body {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 20px 20px 0;
+  flex: 1;
+}
+
+/* ── Footer ── */
+.lm-footer {
+  padding: 14px 20px calc(16px + env(safe-area-inset-bottom));
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  flex-shrink: 0;
+}
+.lm-footer-text {
+  font-family: 'Poppins', sans-serif;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.35);
+  margin: 0;
+}
+.lm-footer-link {
+  color: #DF468F;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.lm-footer-link:hover { color: #f06baa; }
+
+/* ── Compact form overrides (dans modal) ── */
+.auth-form-compact {
+  display: flex;
+  flex-direction: column;
+}
+.auth-modal-tagline {
+  font-family: 'Poppins', sans-serif;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+  margin: 0 0 18px;
+}
+
+/* Inputs sombres dans le modal */
+.lm-body .auth-input {
+  background: #1a1a1a;
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #f0f0f0;
+}
+.lm-body .auth-input::placeholder { color: #444; }
+.lm-body .auth-input:focus {
+  border-color: #DF468F;
+  box-shadow: 0 0 0 3px rgba(223, 70, 143, 0.15);
+}
+.lm-body .auth-label { color: rgba(255, 255, 255, 0.4); }
+.lm-body .auth-eye { color: #555; }
+.lm-body .auth-eye:hover { color: #DF468F; }
+.lm-body .auth-divider::before,
+.lm-body .auth-divider::after { background: rgba(255, 255, 255, 0.08); }
+.lm-body .auth-divider span { color: rgba(255, 255, 255, 0.25); }
+.lm-body .auth-forgot a { color: rgba(255, 255, 255, 0.3); }
+.lm-body .auth-forgot a:hover { color: #DF468F; }
+.lm-body .auth-footer { color: rgba(255, 255, 255, 0.25); }
+
+/* ── Desktop : centré verticalement ── */
+@media (min-width: 640px) {
+  .lm-overlay { align-items: center; padding: 24px; }
+  .lm-sheet   {
+    border-radius: 20px;
+    max-height: 88dvh;
+    animation: lm-sheet-center-in 250ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+  .lm-sheet--out {
+    animation: lm-sheet-center-out 250ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+  @keyframes lm-sheet-center-in  {
+    from { transform: translateY(20px) scale(0.97); opacity: 0; }
+    to   { transform: translateY(0)    scale(1);    opacity: 1; }
+  }
+  @keyframes lm-sheet-center-out {
+    from { transform: translateY(0)    scale(1);    opacity: 1; }
+    to   { transform: translateY(10px) scale(0.97); opacity: 0; }
+  }
+  .lm-drag-handle { display: none; }
+}

@@ -4,8 +4,8 @@ from userauths.models import *
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth.password_validation import validate_password
 from django.utils.functional import cached_property
-from backend.settings import SIMPLE_JWT
 from typing import TYPE_CHECKING, Any, List, Optional, Union
+from rest_framework_simplejwt.settings import api_settings as SIMPLE_JWT
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
 
@@ -99,31 +99,74 @@ class ProfileSerializer(serializers.ModelSerializer):
         return response
 
 class MessageSerializer(serializers.ModelSerializer):
-    sender_email = serializers.ReadOnlyField(source="sender.email")  # Inclure l'email du sender
+    sender_email  = serializers.ReadOnlyField(source="sender.email")
+    sender_name   = serializers.ReadOnlyField(source="sender.full_name")
+    sender_avatar = serializers.SerializerMethodField()
 
     class Meta:
         model = Message
-        fields = ['id', 'conversation', 'sender', 'sender_email', 'content', 'timestamp', 'is_read']
+        fields = [
+            'id', 'conversation', 'sender', 'sender_email',
+            'sender_name', 'sender_avatar', 'content', 'timestamp', 'is_read',
+        ]
+
+    def get_sender_avatar(self, obj):
+        try:
+            img = obj.sender.profile.image
+            return img.url if img else None
+        except Exception:
+            return None
+
 
 class ConversationSerializer(serializers.ModelSerializer):
-    user_name = serializers.ReadOnlyField(source="user.full_name")
-    vendor_name = serializers.ReadOnlyField(source="vendor.name")
-    profile_image = serializers.SerializerMethodField()
-    vendor_image = serializers.SerializerMethodField()
+    user_name         = serializers.ReadOnlyField(source="user.full_name")
+    vendor_name       = serializers.ReadOnlyField(source="vendor.name")
+    profile_image     = serializers.SerializerMethodField()
+    vendor_image      = serializers.SerializerMethodField()
+    last_message      = serializers.SerializerMethodField()
+    last_message_time = serializers.SerializerMethodField()
+    unread_count      = serializers.SerializerMethodField()
 
     class Meta:
         model = Conversation
-        fields = ['id', 'user', 'profile_image','vendor_image', 'user_name', 'vendor', 'vendor_name', 'created_at', 'updated_at']
+        fields = [
+            'id', 'user', 'profile_image', 'vendor_image',
+            'user_name', 'vendor', 'vendor_name',
+            'created_at', 'updated_at',
+            'last_message', 'last_message_time', 'unread_count',
+        ]
 
     def get_profile_image(self, obj):
-        if obj.user and hasattr(obj.user, 'profile') and obj.user.profile.image:
-            return obj.user.profile.image.url
-        return None
+        try:
+            img = obj.user.profile.image
+            return img.url if img else None
+        except Exception:
+            return None
 
     def get_vendor_image(self, obj):
-        if obj.vendor and obj.vendor.image:
-            return obj.vendor.image.url
-        return None
+        try:
+            img = obj.vendor.image
+            return img.url if img else None
+        except Exception:
+            return None
+
+    def get_last_message(self, obj):
+        last = obj.messages.order_by('-timestamp').first()
+        if not last:
+            return None
+        content = last.content
+        return content[:80] + ('…' if len(content) > 80 else '')
+
+    def get_last_message_time(self, obj):
+        last = obj.messages.order_by('-timestamp').first()
+        ts = last.timestamp if last else obj.updated_at
+        return ts.isoformat() if ts else None
+
+    def get_unread_count(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return 0
+        return obj.messages.filter(is_read=False).exclude(sender=request.user).count()
 
 
 
