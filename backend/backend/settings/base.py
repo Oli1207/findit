@@ -12,7 +12,7 @@ env.read_env(os.path.join(Path(__file__).resolve().parent.parent.parent, '.env')
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent   # backend/
 
-SECRET_KEY = env.str('SECRET_KEY', default='django-insecure-change-me-in-prod')
+SECRET_KEY = env.str('SECRET_KEY')
 
 INSTALLED_APPS = [
     'jazzmin',
