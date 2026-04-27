@@ -1152,7 +1152,7 @@ class InitiatePaystackPaymentView(APIView):
                 amount       = amount_minor,
                 currency     = settings.PAYSTACK_CURRENCY,
                 reference    = order.oid,
-                callback_url = f"{settings.FRONTEND_URL}/payment/verify/",
+                callback_url = f"https://findit.deals/payment/verify/",
                 metadata     = {
                     "order_oid": order.oid,
                     "product"  : product.title,
