@@ -2,7 +2,7 @@
 // Mobile-first · zéro Bootstrap · 3 étapes · prefix: ap-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Swal from 'sweetalert2';
-import ReactCrop, { centerCrop } from 'react-image-crop';
+import ReactCrop, { centerCrop, makeAspectCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -25,8 +25,17 @@ const Toast = Swal.mixin({
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const MAX_PHOTOS = 5; // 1 cover + 4 gallery
 
+// 4:5 portrait (Instagram standard) — forces every stored image to the same
+// aspect ratio so object-fit: cover crops consistently across all display
+// contexts (feed full-screen, 1×1 grid tiles, search cards, lightbox…).
+const CROP_ASPECT = 4 / 5;
+
 function initCrop(w, h) {
-  return centerCrop({ unit: '%', width: 90, height: 90 }, w, h);
+  return centerCrop(
+    makeAspectCrop({ unit: '%', width: 90 }, CROP_ASPECT, w, h),
+    w,
+    h,
+  );
 }
 
 const COLOR_NAMES = {
@@ -540,6 +549,7 @@ export default function AddProduct() {
                   crop={crop}
                   onChange={c => setCrop(c)}
                   onComplete={c => setCrop(c)}
+                  aspect={CROP_ASPECT}
                   minWidth={50}
                 >
                   <img
@@ -553,7 +563,7 @@ export default function AddProduct() {
               )}
             </div>
             <p className="ap-crop-hint">
-              Faites glisser pour ajuster la zone de recadrage
+              Format 4:5 · Faites glisser pour repositionner le cadrage
             </p>
           </div>
         </div>

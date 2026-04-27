@@ -132,6 +132,12 @@ a { text-decoration: none !important; }
   z-index: 1;
 }
 
+/* Vidéo utilisée directement comme .feed-image : doit couvrir sans déformer */
+video.feed-image {
+  object-fit: cover;
+  object-position: center;
+}
+
 /* Dégradé bas (assure la lisibilité du texte) */
 .feed-gradient {
   position: absolute;
