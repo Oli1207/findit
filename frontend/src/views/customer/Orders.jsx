@@ -81,7 +81,7 @@ export default function Orders() {
   const fetchOrders = useCallback(async () => {
     if (!userData?.user_id) return;
     try {
-      const res = await apiInstance.get(`customer/orders/${userData.user_id}`);
+      const res = await apiInstance.get(`customer/orders/${userData.user_id}/`);
       setOrders(res.data || []);
     } catch { /* silent */ }
     finally { setLoading(false); }
