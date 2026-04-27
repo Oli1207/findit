@@ -3,10 +3,10 @@
    ========================================= */
 
 :root {
-  --vp-primary:   #000000;
-  --vp-secondary: #666666;
-  --vp-bg-light:  #f8f9fa;
-  --vp-border:    #e5e7eb;
+  --vp-primary:   var(--fi-text);
+  --vp-secondary: var(--fi-muted);
+  --vp-bg-light:  var(--fi-bg);
+  --vp-border:    var(--fi-border);
   --vp-accent:    #DF468F;
   --vp-blue:      #007bff;
   --vp-radius:    12px;
@@ -31,14 +31,14 @@
 .vp-container {
   max-width: 900px;
   margin: 0 auto;
-  background: #fff;
+  background: var(--fi-bg);
   min-height: 100vh;
   font-family: 'Inter', 'Segoe UI', Roboto, sans-serif;
   padding-bottom: 80px;
 }
 
 /* --- Header Section --- */
-.vp-header { padding: 16px 20px 20px; border-bottom: 1px solid var(--vp-border); background: #fff; }
+.vp-header { padding: 16px 20px 20px; border-bottom: 1px solid var(--vp-border); background: var(--fi-bg-2); }
 .vp-header-nav {
   display: flex; justify-content: space-between; align-items: center;
   margin-bottom: 18px; font-size: 1.1rem;
@@ -69,7 +69,7 @@
 .vp-stat-label { font-size: 0.75rem; color: var(--vp-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
 
 .vp-action-btn-header {
-  width: 100%; padding: 10px; background: #fff;
+  width: 100%; padding: 10px; background: var(--fi-bg-2);
   border: 1px solid var(--vp-border); border-radius: 8px;
   font-weight: 600; cursor: pointer; font-size: 0.9rem;
   transition: background 0.15s;
@@ -77,7 +77,7 @@
 .vp-action-btn-header:hover { background: var(--vp-bg-light); }
 
 /* --- Tabs --- */
-.vp-tabs { display: flex; justify-content: space-around; border-bottom: 1px solid var(--vp-border); position: sticky; top: 0; background: white; z-index: 10; padding-top: 10px; }
+.vp-tabs { display: flex; justify-content: space-around; border-bottom: 1px solid var(--vp-border); position: sticky; top: 0; background: var(--fi-bg-2); z-index: 10; padding-top: 10px; }
 .vp-tab-btn { flex: 1; background: none; border: none; padding: 15px 0; cursor: pointer; color: var(--vp-secondary); font-size: 1.2rem; position: relative; }
 .vp-tab-btn.vp-active { color: var(--vp-primary); }
 .vp-tab-btn.vp-active::after { content: ""; position: absolute; bottom: 0; left: 25%; width: 50%; height: 2px; background-color: var(--vp-primary); }
@@ -92,7 +92,7 @@
 /* --- Orders List --- */
 .vp-orders-list { display: flex; flex-direction: column; gap: 12px; padding: 12px; }
 .vp-card {
-  background: white; border-radius: var(--vp-radius);
+  background: var(--fi-bg-2); border-radius: var(--vp-radius);
   padding: 14px; display: flex; gap: 14px;
   border: 1px solid var(--vp-border);
   box-shadow: 0 1px 3px rgba(0,0,0,0.06);
@@ -104,7 +104,7 @@
   margin-bottom: 4px;
 }
 .vp-card-oid { font-weight: 700; font-size: 0.9rem; color: var(--vp-primary); }
-.vp-card-title { font-size: 0.92rem; font-weight: 600; color: #111; margin: 0 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vp-card-title { font-size: 0.92rem; font-weight: 600; color: var(--fi-text); margin: 0 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .vp-card-meta {
   display: flex; flex-direction: column; gap: 3px;
   font-size: 0.8rem; color: var(--vp-secondary);
@@ -198,7 +198,7 @@
 .vp-order-title {
   font-size: 14px;
   font-weight: 700;
-  color: #111;
+  color: var(--fi-text);
   margin: 0;
   line-height: 1.3;
   display: -webkit-box;
@@ -226,14 +226,14 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: #f4f4f4;
+  background: var(--fi-surface);
   border-radius: 99px;
   padding: 3px 9px;
   font-size: 11px;
-  color: #555;
+  color: var(--fi-text-2);
   white-space: nowrap;
 }
-.vp-card-chip i { font-size: 10px; color: #999; }
+.vp-card-chip i { font-size: 10px; color: var(--fi-muted); }
 
 /* Ligne prix en bas */
 .vp-card-price-row {
@@ -242,7 +242,7 @@
   justify-content: space-between;
   padding: 10px 14px;
   border-top: 1px solid var(--vp-border);
-  background: #fafafa;
+  background: var(--fi-surface);
   margin-top: 10px;
 }
 
@@ -269,7 +269,7 @@
   align-items: center;
   text-align: center;
   padding: 20px;
-  background-color: #fff;
+  background-color: var(--fi-bg-2);
 }
 .vp-icon-lock { font-size: 60px; color: #ccc; margin-bottom: 20px; }
 .vp-btn-login {
@@ -389,17 +389,17 @@
   background: rgba(0, 0, 0, 0.5); /* Fond semi-transparent */
 }
 
-/* Panneau Blanc */
+/* Panneau — suit le thème global */
 .review-panel {
-  background: #fff;
+  background: var(--fi-panel-bg);
+  color: var(--fi-text);
   width: 100%;
-  max-height: 80%; /* Prend 80% max de l'écran */
+  max-height: 80%;
   overflow-y: auto;
   border-radius: 20px 20px 0 0;
   padding: 20px;
   position: relative;
   animation: slideUp 0.3s ease-out;
-  color: black;
 }
 
 @keyframes slideUp {
@@ -415,16 +415,19 @@
   background: none;
   border: none;
   cursor: pointer;
-  color: #333;
+  color: var(--fi-muted);
 }
 
 /* Formulaires et Boutons dans l'overlay */
 .vp-form-control {
   width: 100%;
   padding: 10px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--fi-border);
   border-radius: 8px;
   margin-bottom: 10px;
+  background: var(--fi-input-bg);
+  color: var(--fi-text);
+  outline: none;
 }
 
 .vp-btn-primary {
@@ -442,7 +445,7 @@
 .vp-btn-outline {
   width: 100%;
   padding: 12px;
-  background-color: white;
+  background-color: var(--fi-bg-2);
   border: 1px solid var(--vp-danger);
   color: var(--vp-danger);
   border-radius: 8px;
@@ -454,8 +457,9 @@
 /* Options de Taille/Couleur */
 .vp-option-btn {
   padding: 8px 16px;
-  border: 1px solid #ccc;
-  background: white;
+  border: 1px solid var(--fi-border);
+  background: var(--fi-bg-2);
+  color: var(--fi-text);
   border-radius: 20px;
   margin-right: 8px;
   margin-bottom: 8px;
@@ -486,7 +490,7 @@
    ========================================= */
 
 .vp-order-summary {
-  background: #f8f9fa;
+  background: var(--fi-surface);
   border-radius: 10px;
   padding: 12px 14px;
   margin-bottom: 16px;
@@ -502,10 +506,10 @@
 }
 .vp-order-fee  { color: #d97706; }
 .vp-order-total {
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--fi-border);
   padding-top: 6px;
   margin-top: 2px;
-  color: #111;
+  color: var(--fi-text);
   font-size: 0.95rem;
 }
 
@@ -624,7 +628,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  background: #f9f9f9;
+  background: var(--fi-surface);
   border-radius: 12px;
   padding: 14px 18px;
   margin-bottom: 16px;
@@ -634,8 +638,8 @@
 .vp-review-list { display: flex; flex-direction: column; gap: 12px; }
 
 .vp-review-item {
-  background: #fff;
-  border: 1px solid #eee;
+  background: var(--fi-bg-2);
+  border: 1px solid var(--fi-border);
   border-radius: 12px;
   padding: 14px 16px;
   box-shadow: 0 1px 4px rgba(0,0,0,0.04);
@@ -653,7 +657,7 @@
   flex-shrink: 0;
 }
 .vp-review-name  { font-weight: 600; font-size: 14px; }
-.vp-review-comment { font-size: 14px; color: #333; margin: 0; line-height: 1.5; }
+.vp-review-comment { font-size: 14px; color: var(--fi-text-2); margin: 0; line-height: 1.5; }
 
 /* =========================================
    LOADING SCREEN
@@ -665,15 +669,15 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: #fff;
+  background: var(--fi-bg-2);
   z-index: 9999;
   gap: 16px;
 }
 .vp-spinner {
   width: 40px;
   height: 40px;
-  border: 3px solid #eee;
-  border-top-color: #000;
+  border: 3px solid var(--fi-spinner-border);
+  border-top-color: var(--fi-accent);
   border-radius: 50%;
   animation: vp-spin 0.7s linear infinite;
 }

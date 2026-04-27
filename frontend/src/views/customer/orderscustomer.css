@@ -4,19 +4,19 @@
    ================================================================ */
 
 :root {
-  --oc-bg:       #f5f5f5;
-  --oc-surface:  #ffffff;
-  --oc-border:   #e4e6ea;
+  --oc-bg:       var(--fi-bg);
+  --oc-surface:  var(--fi-bg-2);
+  --oc-border:   var(--fi-border);
   --oc-accent:   #df468f;
-  --oc-text:     #111111;
-  --oc-muted:    #8e8e8e;
+  --oc-text:     var(--fi-text);
+  --oc-muted:    var(--fi-muted);
   --oc-success:  #059669;
   --oc-warning:  #d97706;
   --oc-info:     #0284c7;
   --oc-danger:   #dc2626;
   --oc-radius:   14px;
   --oc-font:     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --oc-skel:     linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+  --oc-skel:     var(--fi-skel-gradient);
 }
 
 /* ── Page shell ── */
@@ -44,7 +44,7 @@
 .oc-back-btn {
   background: none;
   border: none;
-  color: #555;
+  color: var(--fi-muted);
   font-size: 17px;
   cursor: pointer;
   width: 36px;
@@ -56,7 +56,7 @@
   flex-shrink: 0;
   transition: background 0.15s;
 }
-.oc-back-btn:hover { background: #f5f5f5; }
+.oc-back-btn:hover { background: var(--fi-surface); }
 .oc-topbar-title {
   flex: 1;
   font-size: 17px;
@@ -70,7 +70,7 @@
 .oc-topbar-icon-btn {
   background: none;
   border: none;
-  color: #555;
+  color: var(--fi-muted);
   font-size: 17px;
   cursor: pointer;
   width: 36px;
@@ -81,7 +81,7 @@
   border-radius: 50%;
   transition: background 0.15s;
 }
-.oc-topbar-icon-btn:hover { background: #f5f5f5; }
+.oc-topbar-icon-btn:hover { background: var(--fi-surface); }
 
 /* ── Filter tabs ── */
 .oc-tabs {
@@ -148,7 +148,7 @@
   position: relative;
   width: 100%;
   height: 150px;
-  background: #f0f0f0;
+  background: var(--fi-card-img-bg);
   flex-shrink: 0;
 }
 .oc-banner img {
@@ -240,14 +240,14 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: #f5f5f5;
+  background: var(--fi-surface);
   border-radius: 99px;
   padding: 4px 10px;
   font-size: 11px;
-  color: #555;
+  color: var(--fi-text-2);
   white-space: nowrap;
 }
-.oc-chip i { font-size: 10px; color: #999; }
+.oc-chip i { font-size: 10px; color: var(--fi-muted); }
 
 /* Ligne prix */
 .oc-card-price-row {
@@ -256,7 +256,7 @@
   justify-content: space-between;
   padding: 10px 14px;
   border-top: 1px solid var(--oc-border);
-  background: #fafafa;
+  background: var(--fi-surface);
   margin-top: 10px;
 }
 .oc-price-label {
@@ -375,8 +375,8 @@
   color: var(--oc-muted);
 }
 .oc-empty i { font-size: 50px; opacity: 0.25; }
-.oc-empty-title { font-size: 15px; font-weight: 600; color: #444; margin: 0; }
-.oc-empty-sub { font-size: 13px; color: #bbb; max-width: 240px; line-height: 1.5; margin: 0; }
+.oc-empty-title { font-size: 15px; font-weight: 600; color: var(--fi-text-2); margin: 0; }
+.oc-empty-sub { font-size: 13px; color: var(--fi-muted); max-width: 240px; line-height: 1.5; margin: 0; }
 
 /* ── Skeleton ── */
 @keyframes oc-shimmer {

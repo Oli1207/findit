@@ -4,22 +4,22 @@
    ============================================================= */
 
 :root {
-  --cs-bg:          #fff;
-  --cs-surface:     #fafafa;
-  --cs-border:      #dbdbdb;
-  --cs-text:        #111;
-  --cs-muted:       #8e8e8e;
-  --cs-accent:      #0095f6;   /* Instagram blue */
+  --cs-bg:          var(--fi-bg);
+  --cs-surface:     var(--fi-bg-3);
+  --cs-border:      var(--fi-border);
+  --cs-text:        var(--fi-text);
+  --cs-muted:       var(--fi-muted);
+  --cs-accent:      #0095f6;
   --cs-danger:      #dc2626;
   --cs-paystack:    #0ba4db;
   --cs-radius:      12px;
 
-  /* light panel (overlay — blanc comme review-panel du feed) */
-  --cs-dk-bg:       #fff;
-  --cs-dk-surface:  #f5f5f5;
-  --cs-dk-border:   #e0e0e0;
-  --cs-dk-text:     #111;
-  --cs-dk-muted:    #8e8e8e;
+  /* Panel overlay — suit le thème global */
+  --cs-dk-bg:       var(--fi-panel-bg);
+  --cs-dk-surface:  var(--fi-bg-3);
+  --cs-dk-border:   var(--fi-border);
+  --cs-dk-text:     var(--fi-text);
+  --cs-dk-muted:    var(--fi-muted);
 }
 
 /* ── Reset ───────────────────────────────────────────────────── */
@@ -43,7 +43,7 @@
   100% { background-position: 400px 0; }
 }
 .cs-skel {
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background: var(--fi-skel-gradient);
   background-size: 800px 100%;
   animation: cs-shimmer 1.4s infinite linear;
   border-radius: 6px;
@@ -263,7 +263,7 @@
 .cs-tile {
   aspect-ratio: 1/1;
   position: relative;
-  background: #f0f0f0;
+  background: var(--fi-card-img-bg);
   cursor: pointer;
   overflow: hidden;
 }
@@ -692,7 +692,7 @@
   color: var(--cs-dk-text);
 }
 .cs-panel::-webkit-scrollbar { width: 3px; }
-.cs-panel::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+.cs-panel::-webkit-scrollbar-thumb { background: var(--fi-scrollbar); border-radius: 4px; }
 
 @keyframes cs-slide-up {
   from { transform: translateY(100%); }
@@ -702,7 +702,7 @@
 .cs-panel-handle {
   width: 36px;
   height: 4px;
-  background: rgba(0,0,0,0.12);
+  background: var(--fi-handle-bg);
   border-radius: 99px;
   margin: 0 auto 16px;
 }
@@ -713,9 +713,9 @@
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: rgba(0,0,0,0.07);
+  background: var(--fi-surface);
   border: none;
-  color: #333;
+  color: var(--fi-muted);
   font-size: 13px;
   cursor: pointer;
   display: flex;
@@ -723,7 +723,7 @@
   justify-content: center;
   transition: background 0.15s;
 }
-.cs-panel-close:hover { background: rgba(0,0,0,0.13); }
+.cs-panel-close:hover { background: var(--fi-surface-2); }
 
 /* ── Panel : en-tête produit ──────────────────────────────── */
 .cs-panel-product-header {
@@ -740,7 +740,7 @@
   border-radius: 10px;
   object-fit: cover;
   flex-shrink: 0;
-  background: #f0f0f0;
+  background: var(--fi-card-img-bg);
 }
 .cs-panel-product-meta { flex: 1; min-width: 0; }
 .cs-panel-product-vendor { font-size: 12px; color: var(--cs-dk-muted); margin: 0 0 3px; }
@@ -754,7 +754,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.cs-panel-product-price { font-size: 15px; font-weight: 700; color: #111; margin: 0; }
+.cs-panel-product-price { font-size: 15px; font-weight: 700; color: var(--cs-dk-text); margin: 0; }
 
 /* ── Champs formulaire dark ──────────────────────────────── */
 .cs-field { margin-bottom: 16px; }
@@ -873,7 +873,7 @@
 
 /* Récap commande */
 .cs-order-summary {
-  background: #f8f8f8;
+  background: var(--cs-dk-surface);
   border: 1px solid var(--cs-dk-border);
   border-radius: 10px;
   padding: 12px 14px;
@@ -893,7 +893,7 @@
   padding-top: 8px;
   font-weight: 700;
   font-size: 15px;
-  color: #111;
+  color: var(--cs-dk-text);
 }
 
 /* Bouton Paystack */
@@ -915,7 +915,7 @@
 .cs-btn-wishlist {
   width: 100%;
   padding: 12px;
-  background: #fff;
+  background: var(--cs-dk-bg);
   color: #dc2626;
   border: 1px solid #fca5a5;
   border-radius: 10px;
@@ -993,11 +993,11 @@
 }
 .cs-comment-avatar--sm { width: 26px; height: 26px; }
 .cs-comment-avatar--placeholder {
-  background: #f0f0f0;
+  background: var(--fi-surface);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #aaa;
+  color: var(--fi-muted);
   font-size: 13px;
 }
 .cs-comment-body { flex: 1; min-width: 0; }
@@ -1044,16 +1044,16 @@
   margin-top: 8px;
   position: sticky;
   bottom: 0;
-  background: #fff;
+  background: var(--cs-dk-bg);
 }
 .cs-comment-input {
   flex: 1;
-  background: #f5f5f5;
-  border: 1px solid #e0e0e0;
+  background: var(--cs-dk-surface);
+  border: 1px solid var(--cs-dk-border);
   border-radius: 20px;
   padding: 10px 14px;
   font-size: 14px;
-  color: #111;
+  color: var(--cs-dk-text);
   outline: none;
   resize: none;
   min-height: 40px;
@@ -1063,8 +1063,8 @@
   transition: border-color 0.2s;
   font-family: inherit;
 }
-.cs-comment-input:focus { border-color: #333; }
-.cs-comment-input::placeholder { color: #aaa; }
+.cs-comment-input:focus { border-color: var(--fi-accent); }
+.cs-comment-input::placeholder { color: var(--cs-dk-muted); }
 .cs-comment-send-btn {
   width: 38px;
   height: 38px;
