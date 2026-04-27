@@ -448,10 +448,19 @@ function VerificationTab() {
   const [sending,   setSending]  = useState(false);
   const [status,    setStatus]   = useState(null);  // loaded from API
   const [loadingStatus, setLoadingStatus] = useState(true);
+  const [camError, setCamError]  = useState('');
 
   const videoRef  = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
+
+  // ── FIX : attache le stream au <video> APRÈS que le DOM l'ait rendu ──
+  useEffect(() => {
+    if (streaming && videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [streaming]);
 
   // Charger le statut actuel
   useEffect(() => {
@@ -462,17 +471,22 @@ function VerificationTab() {
     return () => stopStream();
   }, []);
 
-  const startCamera = async () => {
+  const startCamera = async (stepIndex) => {
+    setCamError('');
+    // Selfie → caméra frontale ; CNI → caméra arrière
+    const facing = (stepIndex ?? step) === 2 ? 'user' : 'environment';
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
+      // Essaie d'abord avec le facing demandé, puis sans contrainte si ça échoue
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing }, audio: false });
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
       }
-      setStreaming(true);
+      streamRef.current = stream;
+      setStreaming(true); // déclenche le useEffect qui attache srcObject
     } catch {
-      Toast.fire({ icon: 'error', title: 'Impossible d\'accéder à la caméra. Autorisez-la dans votre navigateur.' });
+      setCamError('Impossible d\'accéder à la caméra. Vérifiez les permissions dans votre navigateur.');
     }
   };
 
@@ -488,6 +502,12 @@ function VerificationTab() {
     const video  = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas) return;
+
+    // Vérifie que la vidéo est bien active (dimensions > 0)
+    if (!video.videoWidth || !video.videoHeight || video.readyState < 2) {
+      Toast.fire({ icon: 'warning', title: 'La caméra n\'est pas encore prête. Patientez 1 seconde.' });
+      return;
+    }
     canvas.width  = video.videoWidth;
     canvas.height = video.videoHeight;
     canvas.getContext('2d').drawImage(video, 0, 0);
@@ -500,7 +520,7 @@ function VerificationTab() {
   const retake = () => {
     const key = STEPS[step].key;
     setPhotos((prev) => { const c = { ...prev }; delete c[key]; return c; });
-    startCamera();
+    startCamera(step);
   };
 
   const nextStep = () => {
@@ -605,9 +625,16 @@ function VerificationTab() {
         {/* Boutons */}
         <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
           {!streaming && !photoTaken && (
-            <button onClick={startCamera} style={{ padding:'14px', background:'#2563eb', border:'none', borderRadius:12, color:'#fff', fontWeight:700, fontSize:15, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
-              <i className="fas fa-camera" /> Ouvrir la caméra
-            </button>
+            <>
+              <button onClick={() => startCamera(step)} style={{ padding:'14px', background:'#2563eb', border:'none', borderRadius:12, color:'#fff', fontWeight:700, fontSize:15, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+                <i className="fas fa-camera" /> Ouvrir la caméra
+              </button>
+              {camError && (
+                <p style={{ color:'#ef4444', fontSize:12, textAlign:'center', margin:'4px 0 0', lineHeight:1.4 }}>
+                  <i className="fas fa-exclamation-circle" style={{ marginRight:4 }} />{camError}
+                </p>
+              )}
+            </>
           )}
           {streaming && !photoTaken && (
             <button onClick={takePhoto} style={{ padding:'14px', background:'#DF468F', border:'none', borderRadius:12, color:'#fff', fontWeight:700, fontSize:15, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
