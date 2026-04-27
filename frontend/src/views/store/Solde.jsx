@@ -18,6 +18,8 @@ import { syncReviewsIfOnline } from "./ReviewOffline";
 import { useSwipeable } from "react-swipeable";
 import BottomBar from "./BottomBar";
 import ProductSlider from "./ProductSlider";
+import BuyModal from "./BuyModal";
+import LoginModal from "../auth/LoginModal";
 
 const Solde = () => {
   const [profileData, setProfileData] = useState(null);
@@ -29,6 +31,7 @@ const Solde = () => {
   const currentAddress = GetCurrentAddress();
   const navigate = useNavigate();
   const [orderProduct, setOrderProduct] = useState(null);
+  const [showLogin,    setShowLogin]    = useState(false);
   const [selectedColors, setSelectedColors] = useState({});
   const [selectedSize, setSelectedSize] = useState({});
   const [showSpecifications, setShowSpecifications] = useState({});
@@ -102,10 +105,7 @@ videoRefs.current = []; // Nettoie avant chaque nouveau rendu de .map
   }, [userData?.user_id]);
 
   const handleOrderClick = (product) => {
-    if (!userData) {
-      navigate("/login");
-      return;
-    }
+    if (!userData) { setShowLogin(true); return; }
     setOrderProduct(product);
   };
 
@@ -844,102 +844,16 @@ const handleCloseCommentOverlay = () => {
         </div>
       )}
 
-      {/* ── Overlay commande ── */}
+      {/* ── Modal commande (BuyModal partagé — Paystack escrow + commission) ── */}
+      <LoginModal show={showLogin} onClose={() => setShowLogin(false)} />
       {orderProduct && (
-        <div className="review-overlay">
-          <div className="review-panel">
-            <button className="btn-close" onClick={handleCloseOrder}>&times;</button>
-            <h4 className="mb-3">{orderProduct.title}</h4>
-
-            <div className="mb-3">
-              <label><b>Quantité :</b></label>
-              <input type="number" className="form-control" value={qtyValue} min="1" onChange={handleQtyChange} />
-            </div>
-
-            {orderProduct.size?.length > 0 && (
-              <div className="mb-3">
-                <label className="d-flex align-items-center gap-2">
-                  <b>Taille :</b>
-                  <span>{selectedSize[orderProduct.id] || "Aucune"}</span>
-                </label>
-                <div className="d-flex flex-wrap gap-2 mt-2">
-                  {orderProduct.size.map((size, i) => (
-                    <button
-                      key={i}
-                      onClick={() => handleSizeButtonClick(orderProduct.id, size.name)}
-                      className={`btn btn-sm ${selectedSize[orderProduct.id] === size.name ? "btn-primary" : "btn-outline-primary"}`}
-                    >
-                      {size.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {orderProduct.color?.length > 0 && (
-              <div className="mb-3">
-                <label className="d-flex align-items-center gap-2">
-                  <b>Couleur :</b>
-                  {selectedColors[orderProduct.id] ? (
-                    <>
-                      <div style={{ width: 20, height: 20, borderRadius: "50%", backgroundColor: selectedColors[orderProduct.id], border: "1px solid #ccc" }} />
-                      <span>{selectedColors[orderProduct.id]}</span>
-                    </>
-                  ) : <span>Aucune</span>}
-                </label>
-                <div className="d-flex flex-wrap gap-2 mt-2">
-                  {orderProduct.color.map((color, i) => (
-                    <button
-                      key={i}
-                      className="btn btn-sm p-3"
-                      style={{
-                        backgroundColor: color.color_code,
-                        border: selectedColors[orderProduct.id] === color.color_code ? "2px solid black" : "1px solid #ccc",
-                      }}
-                      onClick={() => handleColorButtonClick(orderProduct.id, color.color_code)}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {profileData?.mobile && profileData?.address && profileData?.city ? (
-              <div className="form-check my-3">
-                <input className="form-check-input" type="checkbox" id="useProfileAddress"
-                  checked={useProfileAddress} onChange={(e) => setUseProfileAddress(e.target.checked)} />
-                <label className="form-check-label" htmlFor="useProfileAddress">Utiliser mon adresse enregistrée</label>
-              </div>
-            ) : null}
-
-            {(!useProfileAddress || !profileData?.mobile || !profileData?.address || !profileData?.city) && (
-              <div>
-                <div className="mb-2">
-                  <label>Téléphone</label>
-                  <input className="form-control" value={customAddress.mobile} type="text"
-                    onChange={(e) => setCustomAddress({ ...customAddress, mobile: e.target.value })} />
-                </div>
-                <div className="mb-2">
-                  <label>Adresse</label>
-                  <input className="form-control" value={customAddress.address} type="text"
-                    onChange={(e) => setCustomAddress({ ...customAddress, address: e.target.value })} />
-                </div>
-                <div className="mb-2">
-                  <label>Ville</label>
-                  <input className="form-control" value={customAddress.city} type="text"
-                    onChange={(e) => setCustomAddress({ ...customAddress, city: e.target.value })} />
-                </div>
-              </div>
-            )}
-
-            <button className="btn btn-primary w-100 my-2"
-              onClick={() => handlePlaceOrder(orderProduct?.id, orderProduct?.price, orderProduct.vendor?.id)}>
-              <i className="fas fa-shopping-cart me-2" /> Commander
-            </button>
-            <button className="btn btn-outline-danger w-100" onClick={() => addToWishList(orderProduct.id)}>
-              <i className="fas fa-heart me-2" /> Ajouter en wishlist
-            </button>
-          </div>
-        </div>
+        <BuyModal
+          product={orderProduct}
+          userData={userData}
+          profileData={profileData}
+          onClose={handleCloseOrder}
+          onWishlist={(id) => addToWishList(id)}
+        />
       )}
 
       {/* ── Overlay commentaires vidéo ── */}

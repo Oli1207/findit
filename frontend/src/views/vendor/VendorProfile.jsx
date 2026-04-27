@@ -909,20 +909,28 @@ function VendorProfile() {
             </div>
 
             {/* Résumé prix + commission */}
-            <div className="vp-order-summary">
-              <div className="vp-order-row">
-                <span>Sous-total</span>
-                <span>{Math.round(Number(orderProduct.price) * qtyValue).toLocaleString("fr-FR")} frs</span>
-              </div>
-              <div className="vp-order-row vp-order-fee">
-                <span>Commission plateforme (5 %)</span>
-                <span>−{Math.round(Number(orderProduct.price) * qtyValue * 0.05).toLocaleString("fr-FR")} frs</span>
-              </div>
-              <div className="vp-order-row vp-order-total">
-                <span>Total débité</span>
-                <span><strong>{Math.round(Number(orderProduct.price) * qtyValue).toLocaleString("fr-FR")} frs</strong></span>
-              </div>
-            </div>
+            {(() => {
+              const sub = Math.round(Number(orderProduct.price) * qtyValue);
+              const fee = Math.round(sub * 0.05);
+              const tot = sub + fee;
+              const fmt = (n) => n.toLocaleString("fr-FR");
+              return (
+                <div className="vp-order-summary">
+                  <div className="vp-order-row">
+                    <span>Sous-total</span>
+                    <span>{fmt(sub)} frs</span>
+                  </div>
+                  <div className="vp-order-row vp-order-fee">
+                    <span>Commission plateforme (5 %)</span>
+                    <span>+{fmt(fee)} frs</span>
+                  </div>
+                  <div className="vp-order-row vp-order-total">
+                    <span>Total débité</span>
+                    <span><strong>{fmt(tot)} frs</strong></span>
+                  </div>
+                </div>
+              );
+            })()}
 
             <button
               className="vp-btn-paystack mb-2"

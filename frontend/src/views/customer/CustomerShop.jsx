@@ -651,20 +651,27 @@ export default function CustomerShop() {
             )}
 
             {/* Récapitulatif */}
-            <div className="cs-order-summary">
-              <div className="cs-order-row">
-                <span>Sous-total</span>
-                <span>{fmtPrice(Number(orderProduct.price) * qtyValue)} frs</span>
-              </div>
-              <div className="cs-order-row cs-order-fee">
-                <span>Commission (5 %)</span>
-                <span>−{fmtPrice(Number(orderProduct.price) * qtyValue * 0.05)} frs</span>
-              </div>
-              <div className="cs-order-row cs-order-total">
-                <span>Total débité</span>
-                <strong>{fmtPrice(Number(orderProduct.price) * qtyValue)} frs</strong>
-              </div>
-            </div>
+            {(() => {
+              const sub = Number(orderProduct.price) * qtyValue;
+              const fee = Math.round(sub * 0.05);
+              const tot = Math.round(sub) + fee;
+              return (
+                <div className="cs-order-summary">
+                  <div className="cs-order-row">
+                    <span>Sous-total</span>
+                    <span>{fmtPrice(sub)} frs</span>
+                  </div>
+                  <div className="cs-order-row cs-order-fee">
+                    <span>Commission plateforme (5 %)</span>
+                    <span>+{fmtPrice(fee)} frs</span>
+                  </div>
+                  <div className="cs-order-row cs-order-total">
+                    <span>Total débité</span>
+                    <strong>{fmtPrice(tot)} frs</strong>
+                  </div>
+                </div>
+              );
+            })()}
 
             <button className="cs-btn-paystack"
               onClick={() => handlePayWithPaystack(orderProduct.id, orderProduct.price, orderProduct.vendor?.id)}>

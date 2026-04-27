@@ -1118,9 +1118,12 @@ class InitiatePaystackPaymentView(APIView):
         vendor  = get_object_or_404(Vendor,  id=vendor_id)
 
         # ── Calcul du montant ──────────────────────────────────────────────────
-        total        = (Decimal(str(price_unit)) * qty).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        platform_fee = (total * _FEE).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        vendor_amt   = (total - platform_fee).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        # vendor_amt  = prix produit × qté  (ce que reçoit le vendeur)
+        # platform_fee = 5 % ajoutés PAR-DESSUS pour la plateforme
+        # charge_total = ce que le client paie réellement (= vendor_amt + fee)
+        vendor_amt   = (Decimal(str(price_unit)) * qty).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        platform_fee = (vendor_amt * _FEE).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        charge_total = (vendor_amt + platform_fee).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         code         = _generate_validation_code()
 
         # ── Création de la commande (pending_payment) ──────────────────────────
@@ -1131,7 +1134,7 @@ class InitiatePaystackPaymentView(APIView):
             qty             = qty,
             size            = size,
             color           = color,
-            price           = total,
+            price           = charge_total,   # montant réellement débité au client
             full_name       = full_name,
             mobile          = mobile,
             address         = address,
@@ -1146,7 +1149,7 @@ class InitiatePaystackPaymentView(APIView):
 
         # ── Initialisation Paystack ────────────────────────────────────────────
         try:
-            amount_minor = to_paystack_amount(total, settings.PAYSTACK_CURRENCY)
+            amount_minor = to_paystack_amount(charge_total, settings.PAYSTACK_CURRENCY)
             result = initialize_transaction(
                 email        = request.user.email,
                 amount       = amount_minor,

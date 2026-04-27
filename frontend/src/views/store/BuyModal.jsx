@@ -86,13 +86,14 @@ export default function BuyModal({
 
   if (!product) return null;
 
-  const subtotal = Number(product.price) * qty;
-  const fee      = subtotal * 0.05;
+  const subtotal   = Number(product.price) * qty;   // part vendeur
+  const fee        = Math.round(subtotal * 0.05);    // commission plateforme (+5 %)
+  const totalCharge = subtotal + fee;                // montant réellement débité
 
   const FIELDS = [
     { key: "mobile",  label: "Téléphone", icon: "fa-phone",    placeholder: "Ex : 0612 34 56 78" },
     { key: "address", label: "Adresse",   icon: "fa-home",     placeholder: "Rue, quartier…"      },
-    { key: "city",    label: "Ville",     icon: "fa-city",     placeholder: "Ex : Cotonou"        },
+    { key: "city",    label: "Ville",     icon: "fa-city",     placeholder: "Ex : Abidjan"        },
   ];
 
   return (
@@ -236,12 +237,12 @@ export default function BuyModal({
             <span>{fmtPrice(subtotal)} frs</span>
           </div>
           <div className="bm-summary-row bm-summary-fee">
-            <span>Commission (5 %)</span>
-            <span>−{fmtPrice(fee)} frs</span>
+            <span>Commission plateforme (5 %)</span>
+            <span>+{fmtPrice(fee)} frs</span>
           </div>
           <div className="bm-summary-row bm-summary-total">
             <span>Total débité</span>
-            <strong>{fmtPrice(subtotal)} frs</strong>
+            <strong>{fmtPrice(totalCharge)} frs</strong>
           </div>
         </div>
 
