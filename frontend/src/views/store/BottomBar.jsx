@@ -9,7 +9,7 @@ function BottomBar() {
   const [showLogin,   setShowLogin]   = useState(false);
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const { theme, toggle, isDark } = useTheme();
+  const { isDark } = useTheme();
   const userData = UserData();
 
   /* Clic sur lien protégé : modal si non connecté, navigation sinon */
@@ -151,20 +151,6 @@ function BottomBar() {
     flexShrink: 0,
   };
 
-  /* Bouton toggle thème */
-  const themeToggleStyle = {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: 3,
-    flex: 1,
-    cursor: "pointer",
-    background: "none",
-    border: "none",
-    padding: "4px 0 0",
-    outline: "none",
-  };
-
   return (
     <>
       {/* Modal auth (profil non connecté) */}
@@ -241,16 +227,6 @@ function BottomBar() {
           <span style={labelStyle(isActive("/profile"))}>Profil</span>
         </a>
 
-        {/* Toggle Dark / Light */}
-        <button type="button" style={themeToggleStyle} onClick={toggle} aria-label="Changer le thème">
-          <i
-            className={isDark ? "fas fa-sun" : "fas fa-moon"}
-            style={{ fontSize: 20, color: isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.4)", transition: "color 0.2s" }}
-          />
-          <span style={{ fontSize: 10, fontWeight: 400, color: isDark ? "rgba(255,255,255,0.38)" : "rgba(0,0,0,0.38)", fontFamily: "'Poppins', sans-serif" }}>
-            {isDark ? "Clair" : "Sombre"}
-          </span>
-        </button>
 
       </div>
     </>

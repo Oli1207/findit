@@ -8,7 +8,7 @@ export async function subscribeUserToPush() {
 
   const access = localStorage.getItem("access");
 
-  const res = await fetch("http://192.168.1.13:8000/api/v1/save-subscription/", {
+  const res = await fetch("https://backend.findit.deals/api/v1/save-subscription/", {
     method: "POST",
     body: JSON.stringify(subscription),
     headers: {

@@ -77,7 +77,7 @@ function App() {
 
 {/*done*/}  <Route path="/" element={<MainWrapper><TikTokFeed /></MainWrapper>} />
  {/*to abort*/}        <Route path="/ancien" element={<MainWrapper><Products /></MainWrapper>} />
-{/*done*/} <Route path="/suivis" elemeNNnt={<MainWrapper><FollowedVendorsFeed /></MainWrapper>} />
+{/*done*/} <Route path="/suivis" element={<MainWrapper><FollowedVendorsFeed /></MainWrapper>} />
         <Route path="/register" element={<MainWrapper><Register /></MainWrapper>} />
         <Route path="/login" element={<MainWrapper><Login /></MainWrapper>} />
         <Route path="/logout" element={<MainWrapper><Logout /></MainWrapper>} />

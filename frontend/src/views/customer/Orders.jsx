@@ -108,12 +108,12 @@ export default function Orders() {
           <button className="oc-topbar-icon-btn" onClick={() => navigate('/customer/messages/')} aria-label="Messages">
             <i className="fas fa-comment-alt" />
           </button>
-          <button className="oc-topbar-icon-btn" onClick={() => navigate('/customer/wishlist/')} aria-label="Favoris">
+          {/* <button className="oc-topbar-icon-btn" onClick={() => navigate('/customer/wishlist/')} aria-label="Favoris">
             <i className="fas fa-heart" />
-          </button>
-          <button className="oc-topbar-icon-btn" onClick={() => navigate('/customer/account/')} aria-label="Paramètres">
+          </button> */}
+          {/* <button className="oc-topbar-icon-btn" onClick={() => navigate('/customer/account/')} aria-label="Paramètres">
             <i className="fas fa-cog" />
-          </button>
+          </button> */}
         </div>
       </div>
 

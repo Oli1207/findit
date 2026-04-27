@@ -20,6 +20,7 @@ import BottomBar from "./BottomBar";
 import ProductSlider from "./ProductSlider";
 import BuyModal from "./BuyModal";
 import LoginModal from "../auth/LoginModal";
+import { useTheme } from "../../context/ThemeContext";
 
 const Solde = () => {
   const [profileData, setProfileData] = useState(null);
@@ -28,6 +29,7 @@ const Solde = () => {
   const axios = apiInstance;
   const userData = UserData();
   const isMobile = useMediaQuery({ maxWidth: 768 });
+  const { toggle, isDark } = useTheme();
   const currentAddress = GetCurrentAddress();
   const navigate = useNavigate();
   const [orderProduct, setOrderProduct] = useState(null);
@@ -639,6 +641,17 @@ const handleCloseCommentOverlay = () => {
 
       {/* ── Top bar Solde ── */}
       <div className="top-bar">
+        {/* Toggle dark/light — gauche */}
+        <div className="top-bar-left">
+          <button
+            className="top-icon-btn top-theme-btn"
+            onClick={toggle}
+            aria-label="Changer le thème"
+          >
+            <i className={isDark ? "fas fa-sun" : "fas fa-moon"} />
+          </button>
+        </div>
+
         <div className="top-tabs">
           <span className="tab-pill active">🔥 Solde</span>
           <Link to="/" className="brand-center">find<span>IT</span></Link>
