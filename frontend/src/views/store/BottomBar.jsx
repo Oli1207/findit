@@ -1,12 +1,23 @@
 import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTheme } from "../../context/ThemeContext";
+import UserData from "../plugin/UserData";
+import LoginModal from "../auth/LoginModal";
 
 function BottomBar() {
   const [showAddMenu, setShowAddMenu] = useState(false);
+  const [showLogin,   setShowLogin]   = useState(false);
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { theme, toggle, isDark } = useTheme();
+  const userData = UserData();
+
+  /* Clic sur lien protégé : modal si non connecté, navigation sinon */
+  const handleAuthClick = (path) => (e) => {
+    e.preventDefault();
+    if (!userData) { setShowLogin(true); return; }
+    navigate(path);
+  };
 
   const isActive = (path) => {
     if (path === "/") return pathname === "/";
@@ -156,6 +167,13 @@ function BottomBar() {
 
   return (
     <>
+      {/* Modal auth (profil non connecté) */}
+      <LoginModal
+        show={showLogin}
+        onClose={() => setShowLogin(false)}
+        onSuccess={() => { setShowLogin(false); navigate("/profile/"); }}
+      />
+
       {/* Overlay fermeture menu */}
       {showAddMenu && (
         <div style={overlayStyle} onClick={() => setShowAddMenu(false)} />
@@ -191,33 +209,37 @@ function BottomBar() {
         </Link>
 
         {/* Ventes (commandes reçues vendeur) */}
-        <Link to="/vendor/orders/" style={itemStyle(isActive("/vendor/orders"))}>
+        <a href="/vendor/orders/" onClick={handleAuthClick("/vendor/orders/")} style={itemStyle(isActive("/vendor/orders"))}>
           <i className="fas fa-store" style={iconStyle(isActive("/vendor/orders"))} />
           <span style={labelStyle(isActive("/vendor/orders"))}>Ventes</span>
-        </Link>
+        </a>
 
         {/* Bouton + */}
         <div style={addWrapStyle}>
           <button
             type="button"
             style={addBtnStyle}
-            onClick={(e) => { e.stopPropagation(); setShowAddMenu((p) => !p); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!userData) { setShowLogin(true); return; }
+              setShowAddMenu((p) => !p);
+            }}
           >
             <i className="fas fa-plus" />
           </button>
         </div>
 
         {/* Achats (commandes passées client) */}
-        <Link to="/customer/orders/" style={itemStyle(isActive("/customer/orders"))}>
+        <a href="/customer/orders/" onClick={handleAuthClick("/customer/orders/")} style={itemStyle(isActive("/customer/orders"))}>
           <i className="fas fa-shopping-bag" style={iconStyle(isActive("/customer/orders"))} />
           <span style={labelStyle(isActive("/customer/orders"))}>Achats</span>
-        </Link>
+        </a>
 
         {/* Profil */}
-        <Link to="/profile/" style={itemStyle(isActive("/profile"))}>
+        <a href="/profile/" onClick={handleAuthClick("/profile/")} style={itemStyle(isActive("/profile"))}>
           <i className="fas fa-user" style={iconStyle(isActive("/profile"))} />
           <span style={labelStyle(isActive("/profile"))}>Profil</span>
-        </Link>
+        </a>
 
         {/* Toggle Dark / Light */}
         <button type="button" style={themeToggleStyle} onClick={toggle} aria-label="Changer le thème">
