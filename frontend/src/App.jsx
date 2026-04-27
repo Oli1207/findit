@@ -1,4 +1,6 @@
 import { Routes, Route, BrowserRouter } from 'react-router-dom'
+import { ThemeProvider } from './context/ThemeContext'
+import './theme.css'
 import Register from './views/auth/Register'
 import Login from './views/auth/Login'
 import Logout from './views/auth/Logout'
@@ -57,7 +59,7 @@ moment.locale("fr");
 
 function App() {
   return (
-    <>
+    <ThemeProvider>
       {/* <ReloadPrompt/>
     <InstallButton />
      <PWAInstallPrompt /> */}
@@ -72,9 +74,10 @@ function App() {
         } /> */}
 
         {/* Les autres routes dans MainWrapper */}
+
 {/*done*/}  <Route path="/" element={<MainWrapper><TikTokFeed /></MainWrapper>} />
  {/*to abort*/}        <Route path="/ancien" element={<MainWrapper><Products /></MainWrapper>} />
-{/*done*/} <Route path="/suivis" element={<MainWrapper><FollowedVendorsFeed /></MainWrapper>} />
+{/*done*/} <Route path="/suivis" elemeNNnt={<MainWrapper><FollowedVendorsFeed /></MainWrapper>} />
         <Route path="/register" element={<MainWrapper><Register /></MainWrapper>} />
         <Route path="/login" element={<MainWrapper><Login /></MainWrapper>} />
         <Route path="/logout" element={<MainWrapper><Logout /></MainWrapper>} />
@@ -82,7 +85,7 @@ function App() {
         <Route path="/forgot-password" element={<MainWrapper><ForgotPassword /></MainWrapper>} />
           <Route path="/create-new-password" element={<MainWrapper><CreateNewPassword /></MainWrapper>} />
    {/*done*/}      <Route path="/haul" element={<MainWrapper><Explore /></MainWrapper>} />
-         <Route path="/cart/" element={<MainWrapper><Cart /></MainWrapper>} />
+        
  {/*done*/}        <Route path="/checkout/:order_oid/" element={<MainWrapper><Checkout /></MainWrapper>} />
   {/*done*/}       <Route path="/payment-success/:order_oid/" element={<MainWrapper><PaymentSuccess /></MainWrapper>} />
    {/*done*/}         <Route path="/solde/" element={<MainWrapper><Solde /></MainWrapper>} />
@@ -123,7 +126,7 @@ function App() {
         <Route path="/vendor/order/:order_oid" element={<MainWrapper><PrivateRoute><OrderDetailVendor /></PrivateRoute></MainWrapper>} />
   <Route path="/customer/order/:order_oid/" element={<MainWrapper><PrivateRoute><OrderDetail /></PrivateRoute></MainWrapper>} />
         <Route path="/customer/wishlist/" element={<MainWrapper><PrivateRoute><Wishlist /></PrivateRoute></MainWrapper>} />
-
+ <Route path="/cart/" element={<MainWrapper><Cart /></MainWrapper>} />
         {/* ── Admin Panel (hors MainWrapper — layout propre) ── */}
         <Route path="/superadmin/*" element={<AdminGuard />}>
           <Route index element={<AdminDashboard />} />
@@ -140,7 +143,7 @@ function App() {
 
       </Routes>
     </BrowserRouter>
-     </>
+    </ThemeProvider>
   )
 }
 

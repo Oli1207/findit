@@ -1,27 +1,29 @@
 import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useTheme } from "../../context/ThemeContext";
 
 function BottomBar() {
   const [showAddMenu, setShowAddMenu] = useState(false);
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const { theme, toggle, isDark } = useTheme();
 
   const isActive = (path) => {
     if (path === "/") return pathname === "/";
     return pathname.startsWith(path);
   };
 
-  /* ── Styles ── */
+  /* ── Styles réactifs ── */
   const barStyle = {
     position: "fixed",
     bottom: 0,
     left: 0,
     width: "100%",
     height: 64,
-    background: "rgba(8,8,8,0.96)",
+    background: isDark ? "rgba(8,8,8,0.96)" : "rgba(255,255,255,0.96)",
     backdropFilter: "blur(20px)",
     WebkitBackdropFilter: "blur(20px)",
-    borderTop: "1px solid rgba(255,255,255,0.07)",
+    borderTop: isDark ? "1px solid rgba(255,255,255,0.07)" : "1px solid rgba(0,0,0,0.09)",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-around",
@@ -29,7 +31,7 @@ function BottomBar() {
     zIndex: 200,
   };
 
-  const itemStyle = (active) => ({
+  const itemStyle = () => ({
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
@@ -42,14 +44,14 @@ function BottomBar() {
 
   const iconStyle = (active) => ({
     fontSize: 20,
-    color: active ? "#DF468F" : "rgba(255,255,255,0.45)",
+    color: active ? "#DF468F" : isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.4)",
     transition: "color 0.2s",
   });
 
   const labelStyle = (active) => ({
     fontSize: 10,
     fontWeight: active ? 600 : 400,
-    color: active ? "#DF468F" : "rgba(255,255,255,0.38)",
+    color: active ? "#DF468F" : isDark ? "rgba(255,255,255,0.38)" : "rgba(0,0,0,0.38)",
     transition: "color 0.2s",
     fontFamily: "'Poppins', sans-serif",
   });
@@ -94,22 +96,24 @@ function BottomBar() {
     bottom: 82,
     left: "50%",
     transform: "translateX(-50%)",
-    background: "#1a1a1a",
+    background: isDark ? "#1a1a1a" : "#ffffff",
     borderRadius: 16,
-    boxShadow: "0 12px 36px rgba(0,0,0,0.5)",
+    boxShadow: isDark
+      ? "0 12px 36px rgba(0,0,0,0.5)"
+      : "0 12px 36px rgba(0,0,0,0.15)",
     padding: 10,
     display: "flex",
     flexDirection: "column",
     gap: 8,
     minWidth: 210,
     zIndex: 199,
-    border: "1px solid rgba(255,255,255,0.08)",
+    border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(0,0,0,0.1)",
   };
 
   const menuItemStyle = {
     border: "none",
     outline: "none",
-    background: "rgba(255,255,255,0.06)",
+    background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
     borderRadius: 12,
     padding: "11px 14px",
     fontSize: 13,
@@ -119,7 +123,7 @@ function BottomBar() {
     display: "flex",
     alignItems: "center",
     gap: 10,
-    color: "#fff",
+    color: isDark ? "#fff" : "#111",
     fontFamily: "'Poppins', sans-serif",
   };
 
@@ -136,6 +140,20 @@ function BottomBar() {
     flexShrink: 0,
   };
 
+  /* Bouton toggle thème */
+  const themeToggleStyle = {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: 3,
+    flex: 1,
+    cursor: "pointer",
+    background: "none",
+    border: "none",
+    padding: "4px 0 0",
+    outline: "none",
+  };
+
   return (
     <>
       {/* Overlay fermeture menu */}
@@ -146,11 +164,17 @@ function BottomBar() {
       {/* Menu contextuel */}
       {showAddMenu && (
         <div style={menuStyle}>
-          <button style={menuItemStyle} onClick={() => { setShowAddMenu(false); navigate("/add-product/", { state: { autoOpen: true } }); }}>
+          <button
+            style={menuItemStyle}
+            onClick={() => { setShowAddMenu(false); navigate("/add-product/", { state: { autoOpen: true } }); }}
+          >
             <div style={menuIconStyle}><i className="fas fa-box-open" /></div>
             Ajouter un produit
           </button>
-          <button style={menuItemStyle} onClick={() => { setShowAddMenu(false); navigate("/vendor/add-presentation", { state: { autoOpen: true } }); }}>
+          <button
+            style={menuItemStyle}
+            onClick={() => { setShowAddMenu(false); navigate("/vendor/add-presentation", { state: { autoOpen: true } }); }}
+          >
             <div style={menuIconStyle}><i className="fas fa-video" /></div>
             Ajouter une vidéo
           </button>
@@ -194,6 +218,17 @@ function BottomBar() {
           <i className="fas fa-user" style={iconStyle(isActive("/profile"))} />
           <span style={labelStyle(isActive("/profile"))}>Profil</span>
         </Link>
+
+        {/* Toggle Dark / Light */}
+        <button type="button" style={themeToggleStyle} onClick={toggle} aria-label="Changer le thème">
+          <i
+            className={isDark ? "fas fa-sun" : "fas fa-moon"}
+            style={{ fontSize: 20, color: isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.4)", transition: "color 0.2s" }}
+          />
+          <span style={{ fontSize: 10, fontWeight: 400, color: isDark ? "rgba(255,255,255,0.38)" : "rgba(0,0,0,0.38)", fontFamily: "'Poppins', sans-serif" }}>
+            {isDark ? "Clair" : "Sombre"}
+          </span>
+        </button>
 
       </div>
     </>

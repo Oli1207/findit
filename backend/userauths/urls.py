@@ -31,6 +31,7 @@ path("popular-products/", store_views.PopularProductFeed.as_view(), name="popula
     path('vendor-presentations/<int:vendor_id>/', vendor_views.VendorPresentationsAPIView.as_view(), name='vendor-presentations'),
     path('vendor-products/<int:vendor_id>/', vendor_views.VendorProductsAPIView.as_view(), name='vendor-products'),
     path('category/<int:category_id>/', store_views.ProductsByCategoryAPIView.as_view(), name='products-by-category'),
+    path('presentations/<int:pk>/', store_views.PresentationDetailAPIView.as_view()),
     path('presentations/<int:pk>/like/', store_views.LikePresentationAPIView.as_view()),
     path('comments/create/', store_views.CommentCreateAPIView.as_view()),
     

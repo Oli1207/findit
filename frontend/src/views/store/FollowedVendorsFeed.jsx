@@ -418,12 +418,15 @@ const [expandedText, setExpandedText] = useState({});
     });
   };
 
-  const handleCommentIconClick = (presentation) => {
-    if (!userData) {
-      setShowLogin(true);
-      return;
-    }
-    setSelectedPresentation(presentation);
+  const handleCommentIconClick = async (presentation) => {
+    if (!userData) { setShowLogin(true); return; }
+    setSelectedPresentation({ ...presentation, comments: presentation.comments || [] });
+    try {
+      const { data } = await apiInstance.get(`presentations/${presentation.id}/`);
+      setSelectedPresentation((prev) =>
+        prev?.id === presentation.id ? { ...prev, ...data } : prev
+      );
+    } catch {/* silencieux */}
   };
 
   const handleCloseCommentOverlay = () => {
@@ -681,26 +684,64 @@ const truncateText = (text, max) => {
         <div className="review-overlay">
           <div className="review-panel">
             <button className="btn-close" onClick={handleCloseCommentOverlay}>&times;</button>
-            <h4 className="mb-3">Commentaires</h4>
+            <h4 style={{ color: "#f0f0f0", fontSize: 15, fontWeight: 700, marginBottom: 16 }}>
+              <i className="fas fa-comment-dots" style={{ marginRight: 8, color: "#DF468F" }} />
+              Commentaires
+            </h4>
 
-            <div className="mb-3" style={{ maxHeight: "300px", overflowY: "auto", color: "black" }}>
-              {selectedPresentation.comments
+            {/* Liste des commentaires */}
+            <div style={{ flex: 1, overflowY: "auto", marginBottom: 14 }}>
+              {(selectedPresentation.comments || []).length === 0 && (
+                <p style={{ color: "#555", fontSize: 13, textAlign: "center", padding: "24px 0" }}>
+                  Aucun commentaire pour l'instant.
+                </p>
+              )}
+              {(selectedPresentation.comments || [])
                 .filter((c) => c.parent === null)
                 .map((comment) => (
-                  <div key={comment.id}>
-                    <b>{comment.display_name}</b> : {comment.content}
-                    <button className="btn btn-sm btn-link" onClick={() => setReplyingTo(comment.id)}>Répondre</button>
-                    {comment?.replies.map((reply) => (
-                      <div key={reply.id} style={{ marginBottom: 20, marginLeft: 20, fontStyle: "italic" }}>
-                        ↳ <b>{reply.display_name}</b> : {reply.content}
+                  <div key={comment.id} style={{ marginBottom: 14 }}>
+                    <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                      <div style={{ flex: 1 }}>
+                        <span style={{ fontWeight: 700, color: "#f0f0f0", fontSize: 13 }}>
+                          {comment.display_name}
+                        </span>
+                        <span style={{ color: "#bbb", fontSize: 13, marginLeft: 8 }}>
+                          {comment.content}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => setReplyingTo(comment.id)}
+                        style={{ background: "none", border: "none", color: "#888", fontSize: 12, cursor: "pointer", flexShrink: 0 }}
+                      >
+                        Répondre
+                      </button>
+                    </div>
+                    {(comment.replies || []).map((reply) => (
+                      <div key={reply.id} style={{ marginLeft: 20, marginTop: 6, fontSize: 12, color: "#aaa", fontStyle: "italic" }}>
+                        ↳ <strong style={{ color: "#ccc" }}>{reply.display_name}</strong> {reply.content}
                       </div>
                     ))}
                     {replyingTo === comment.id && (
-                      <div className="d-flex gap-2 my-1">
-                        <input type="text" placeholder="Votre réponse" className="form-control"
-                          value={replyValue} onChange={(e) => setReplyValue(e.target.value)} />
-                        <button className="btn btn-success"
-                          onClick={(e) => replyValue.trim() && handleComment(e, selectedPresentation.id, replyValue, comment.id)}>
+                      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                        <input
+                          type="text"
+                          placeholder="Votre réponse…"
+                          value={replyValue}
+                          onChange={(e) => setReplyValue(e.target.value)}
+                          style={{
+                            flex: 1, padding: "8px 12px", fontSize: 13, borderRadius: 10,
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            background: "rgba(255,255,255,0.05)", color: "#f0f0f0", outline: "none",
+                          }}
+                        />
+                        <button
+                          onClick={(e) => replyValue.trim() && handleComment(e, selectedPresentation.id, replyValue, comment.id)}
+                          style={{
+                            padding: "8px 14px", borderRadius: 10, border: "none", fontSize: 13,
+                            background: "linear-gradient(135deg,#DF468F,#c4317a)", color: "#fff",
+                            cursor: "pointer", fontWeight: 700,
+                          }}
+                        >
                           Envoyer
                         </button>
                       </div>
@@ -709,12 +750,28 @@ const truncateText = (text, max) => {
                 ))}
             </div>
 
-            <div className="d-flex gap-2">
-              <input type="text" placeholder="Votre commentaire" className="form-control"
-                value={commentValue} onChange={(e) => setCommentValue(e.target.value)} />
-              <button className="btn btn-primary"
-                onClick={(e) => commentValue.trim() && handleComment(e, selectedPresentation.id, commentValue)}>
-                Envoyer
+            {/* Zone saisie commentaire */}
+            <div style={{ display: "flex", gap: 8, borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: 12 }}>
+              <input
+                type="text"
+                placeholder="Votre commentaire…"
+                value={commentValue}
+                onChange={(e) => setCommentValue(e.target.value)}
+                style={{
+                  flex: 1, padding: "10px 14px", fontSize: 13, borderRadius: 10,
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  background: "rgba(255,255,255,0.05)", color: "#f0f0f0", outline: "none",
+                }}
+              />
+              <button
+                onClick={(e) => commentValue.trim() && handleComment(e, selectedPresentation.id, commentValue)}
+                style={{
+                  padding: "10px 16px", borderRadius: 10, border: "none",
+                  background: "linear-gradient(135deg,#DF468F,#c4317a)", color: "#fff",
+                  cursor: "pointer", fontWeight: 700, fontSize: 14,
+                }}
+              >
+                <i className="fas fa-paper-plane" />
               </button>
             </div>
           </div>

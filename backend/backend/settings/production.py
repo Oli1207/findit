@@ -1,6 +1,6 @@
 from .base import *
 
-DEBUG = False
+DEBUG = True
 
 # ── Hosts & CORS (listes séparées par virgule dans .env) ──────────────────────
 _allowed = env.str('ALLOWED_HOSTS', default='findit.deals,www.findit.deals,backend.findit.deals')

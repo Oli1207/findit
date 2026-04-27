@@ -4,12 +4,12 @@
    ============================================================= */
 
 :root {
-  --srch-bg:        #000;
-  --srch-surface:   #111;
-  --srch-border:    rgba(255,255,255,0.10);
-  --srch-text:      #f0f0f0;
-  --srch-muted:     #888;
-  --srch-accent:    #fff;
+  --srch-bg:        var(--fi-bg);
+  --srch-surface:   var(--fi-bg-2);
+  --srch-border:    var(--fi-border);
+  --srch-text:      var(--fi-text);
+  --srch-muted:     var(--fi-muted);
+  --srch-accent:    var(--fi-text);
   --srch-paystack:  #0ba4db;
   --srch-danger:    #dc2626;
   --srch-radius:    12px;
@@ -32,7 +32,7 @@
   right: 0;
   z-index: 100;
   height: 56px;
-  background: rgba(0,0,0,0.92);
+  background: var(--fi-header-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--srch-border);
@@ -74,7 +74,7 @@
 
 .srch-input {
   width: 100%;
-  background: rgba(255,255,255,0.08);
+  background: var(--fi-surface);
   border: 1px solid var(--srch-border);
   border-radius: 22px;
   padding: 9px 38px 9px 16px;
@@ -85,8 +85,8 @@
 }
 .srch-input::placeholder { color: var(--srch-muted); }
 .srch-input:focus {
-  background: rgba(255,255,255,0.12);
-  border-color: rgba(255,255,255,0.35);
+  background: var(--fi-surface-2);
+  border-color: var(--fi-border-strong);
 }
 
 .srch-clear-btn {
@@ -204,7 +204,7 @@
 .srch-spinner {
   width: 32px;
   height: 32px;
-  border: 3px solid rgba(255,255,255,0.12);
+  border: 3px solid var(--fi-spinner-border);
   border-top-color: var(--srch-text);
   border-radius: 50%;
   animation: srch-spin 0.75s linear infinite;
@@ -243,7 +243,7 @@
   position: relative;
   aspect-ratio: 1 / 1;
   overflow: hidden;
-  background: #1a1a1a;
+  background: var(--fi-card-img-bg);
 }
 .srch-card-img {
   width: 100%;
@@ -392,6 +392,8 @@
 .srch-lb-media {
   position: absolute;
   inset: 0;
+  z-index: 1;
+  isolation: isolate; /* confine le z-index du ProductSlider dans ce conteneur */
 }
 .srch-lb-video {
   width: 100%;
@@ -409,6 +411,7 @@
     rgba(0,0,0,0.75) 100%
   );
   pointer-events: none;
+  z-index: 2;
 }
 
 .srch-lb-info {
@@ -417,6 +420,7 @@
   left: 14px;
   right: 80px;
   color: #fff;
+  z-index: 3;
 }
 .srch-lb-vendor {
   display: block;
@@ -497,6 +501,7 @@
   flex-direction: column;
   align-items: center;
   gap: 18px;
+  z-index: 3;
 }
 .srch-lb-avatar {
   width: 42px;
@@ -660,16 +665,17 @@
 .srch-panel {
   width: 100%;
   max-height: 92dvh;
-  background: #141414;
+  background: var(--fi-panel-bg);
   border-radius: 20px 20px 0 0;
-  border-top: 1px solid rgba(255,255,255,0.08);
+  border-top: 1px solid var(--fi-panel-border);
   overflow-y: auto;
   padding: 12px 18px 40px;
   position: relative;
   animation: srch-slide-up 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  color: var(--fi-text);
 }
 .srch-panel::-webkit-scrollbar { width: 3px; }
-.srch-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+.srch-panel::-webkit-scrollbar-thumb { background: var(--fi-scrollbar); border-radius: 4px; }
 
 @keyframes srch-slide-up {
   from { transform: translateY(100%); }
@@ -679,7 +685,7 @@
 .srch-panel-handle {
   width: 36px;
   height: 4px;
-  background: rgba(255,255,255,0.2);
+  background: var(--fi-handle-bg);
   border-radius: 99px;
   margin: 0 auto 16px;
 }
@@ -763,7 +769,7 @@
 }
 .srch-form-input {
   width: 100%;
-  background: rgba(255,255,255,0.06);
+  background: var(--fi-input-bg);
   border: 1px solid var(--srch-border);
   border-radius: 10px;
   padding: 10px 14px;
@@ -772,7 +778,7 @@
   outline: none;
   transition: border-color 0.2s;
 }
-.srch-form-input:focus { border-color: rgba(255,255,255,0.35); }
+.srch-form-input:focus { border-color: var(--fi-border-strong); }
 .srch-form-input::placeholder { color: var(--srch-muted); }
 
 /* ── Quantité stepper ────────────────────────────────────────────── */

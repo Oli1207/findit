@@ -5,6 +5,7 @@ import UserData from "../plugin/UserData";
 import Swal from "sweetalert2";
 import Review from "./Review";
 import "./search.css";
+import "./tiktokfeed.css";
 import { useFollowStore } from "../../store/useFollowStore";
 import BottomBar from "./BottomBar";
 import LoginModal from "../auth/LoginModal";
@@ -280,6 +281,17 @@ export default function Search() {
     } catch { Toast.fire({ icon: "error", title: "Erreur like" }); }
   };
 
+  // Ouvre le panel commentaires et charge les commentaires complets
+  const openCommentOverlay = async (presentation) => {
+    setSelectedPresentation({ ...presentation, comments: presentation.comments || [] });
+    try {
+      const { data } = await apiInstance.get(`presentations/${presentation.id}/`);
+      setSelectedPresentation((prev) =>
+        prev?.id === presentation.id ? { ...prev, ...data } : prev
+      );
+    } catch {/* silencieux */}
+  };
+
   const handleComment = async (e, presentationId, content, parentId = null) => {
     e.preventDefault();
     if (!userData) { setShowLogin(true); return; }
@@ -360,119 +372,137 @@ export default function Search() {
           <div className="srch-lb-snap" ref={snapRef}>
             {lightboxList.map((item, idx) => (
               <div key={`lb-${item.type}-${item.id}`} className="srch-lb-item">
-                {/* Média */}
-                <div className="srch-lb-media">
-                  {item.type === "presentation" ? (
-                    <video
-                      ref={(el) => { if (el) videoRefs.current[idx] = el; }}
-                      src={item.video}
-                      className="srch-lb-video"
-                      loop muted playsInline
-                      onClick={(e) => e.target.paused ? e.target.play() : e.target.pause()}
-                    />
-                  ) : (
-                    <ProductSlider item={item} />
-                  )}
-                </div>
 
-                <div className="srch-lb-gradient" />
+                {/* ── Média ─────────────────────────────────────────────── */}
+                {item.type === "presentation" ? (
+                  <video
+                    ref={(el) => { if (el) videoRefs.current[idx] = el; }}
+                    src={item.video}
+                    className="feed-image"
+                    style={{ objectFit: "cover" }}
+                    loop muted playsInline
+                    onClick={(e) => e.target.paused ? e.target.play() : e.target.pause()}
+                  />
+                ) : (
+                  <ProductSlider item={item} />
+                )}
 
-                {/* Info bas-gauche */}
-                <div className="srch-lb-info">
-                  <Link
-                    to={item.vendor?.user === userData?.user_id ? "/profile/" : `/customer/${item.vendor?.slug}/`}
-                    className="srch-lb-vendor"
-                  >
-                    @{item.vendor?.name}
-                  </Link>
-                  <h2 className="srch-lb-title">{item.title}</h2>
-                  {item.type === "product" && item.price && (
-                    <p className="srch-lb-price">
-                      {item.old_price && Number(item.old_price) > Number(item.price) && (
-                        <span className="srch-lb-old-price">{fmtPrice(item.old_price)} frs</span>
+                <div className="feed-gradient-top" />
+                <div className="feed-gradient" />
+
+                {/* ── Produit ───────────────────────────────────────────── */}
+                {item.type === "product" ? (
+                  <>
+                    <div className="info">
+                      <div className="vendor-chip">
+                        <Link to={item.vendor?.user === userData?.user_id ? "/profile/" : `/customer/${item.vendor?.slug}/`}>
+                          <img src={item.vendor?.image} className="vendor-avatar-sm" alt="" />
+                        </Link>
+                        <Link
+                          to={item.vendor?.user === userData?.user_id ? "/profile/" : `/customer/${item.vendor?.slug}/`}
+                          className="vendor-name-link"
+                        >
+                          {item.vendor?.name}
+                        </Link>
+                        {item.vendor?.user !== userData?.user_id && (
+                          <span
+                            className={`follow-chip${followStates[item.vendor?.id] ? " following" : ""}`}
+                            onClick={() => userData ? toggleFollow(userData.user_id, item.vendor?.id) : setShowLogin(true)}
+                          >
+                            {followStates[item.vendor?.id] ? "Abonné" : "+ Suivre"}
+                          </span>
+                        )}
+                      </div>
+                      <h2>{item.title}</h2>
+                      <div className="price-row">
+                        {item.old_price && Number(item.old_price) > Number(item.price) && (
+                          <span className="price-old">{fmtPrice(item.old_price)} frs</span>
+                        )}
+                        <span className="price-current">{fmtPrice(item.price)} frs</span>
+                      </div>
+                      <div className="feed-cta-row">
+                        <button className="feed-buy-btn" onClick={(e) => { e.stopPropagation(); handleOrderClick(item); }}>
+                          <i className="fas fa-shopping-bag" /> Acheter
+                        </button>
+                        <button className="feed-wishlist-btn" onClick={(e) => { e.stopPropagation(); addToWishList(item.id); }}>
+                          <i className="fas fa-heart" />
+                        </button>
+                      </div>
+                      {item.category?.title && (
+                        <span className="category-tag" style={{ marginTop: 6 }}>{item.category.title}</span>
                       )}
-                      {fmtPrice(item.price)} frs
-                    </p>
-                  )}
-                  {item.type === "product" && (
-                    <div className="srch-lb-cta-row">
-                      <button
-                        className="srch-lb-buy-btn"
-                        onClick={(e) => { e.stopPropagation(); handleOrderClick(item); }}
-                      >
-                        <i className="fas fa-shopping-bag" /> Acheter
-                      </button>
-                      <button
-                        className="srch-lb-wish-btn"
-                        onClick={(e) => { e.stopPropagation(); addToWishList(item.id); }}
-                        title="Favoris"
-                      >
-                        <i className="fas fa-heart" />
-                      </button>
                     </div>
-                  )}
-                  {item.type === "presentation" && item.description && (
-                    <p className="srch-lb-desc">{item.description}</p>
-                  )}
-                  {item.category && (
-                    <span className="srch-lb-category-tag">{item.category.title}</span>
-                  )}
-                </div>
 
-                {/* Actions droite */}
-                <div className="srch-lb-actions">
-                  <Link to={item.vendor?.user === userData?.user_id ? "/profile/" : `/customer/${item.vendor?.slug}/`}>
-                    <img src={item.vendor?.image} className="srch-lb-avatar" alt="" />
-                  </Link>
-
-                  {item.vendor?.user !== userData?.user_id && (
-                    <button
-                      className={`follow-pill${followStates[item.vendor?.id] ? " followed follow-pill-light" : ""}`}
-                      onClick={() => userData ? toggleFollow(userData.user_id, item.vendor?.id) : setShowLogin(true)}
-                    >
-                      {followStates[item.vendor?.id] ? "Abonné" : <i className="fas fa-plus" />}
-                    </button>
-                  )}
-
-                  {/* ── Actions selon type ── */}
-                  {item.type === "product" ? (
-                    <>
-                      <button className="srch-lb-action-btn" title="Note">
-                        <i className="fas fa-star" />
+                    <div className="actions">
+                      <div className="action-btn">
+                        <div className="action-icon-wrap"><i className="fas fa-star" /></div>
                         <span>{item.rating ? Number(item.rating).toFixed(1) : "0.0"}</span>
-                      </button>
-                      <button className="srch-lb-action-btn" onClick={() => setSelectedProduct(item)} title="Avis">
-                        <i className="fas fa-comment-dots" />
+                      </div>
+                      <div className="action-btn" onClick={() => setSelectedProduct(item)}>
+                        <div className="action-icon-wrap"><i className="fas fa-comment-dots" /></div>
                         <span>{item.rating_count || 0}</span>
-                      </button>
-                      <button className="srch-lb-action-btn" onClick={() => handleOrderClick(item)} title="Commander">
-                        <i className="fas fa-shopping-cart" />
-                      </button>
-                      <button className="srch-lb-action-btn" onClick={() => addToWishList(item.id)} title="Favoris">
-                        <i className="fas fa-heart" />
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button className="srch-lb-action-btn" onClick={() => handleLike(item.id)} title="J'aime">
-                        <i className="fas fa-heart" />
-                        <span>{item.likes_count || 0}</span>
-                      </button>
-                      <button
-                        className="srch-lb-action-btn"
-                        onClick={() => setSelectedPresentation(lightboxList[idx])}
-                        title="Commentaires"
-                      >
-                        <i className="fas fa-comment-dots" />
-                        <span>{item.comments_count || 0}</span>
-                      </button>
-                    </>
-                  )}
+                      </div>
+                      <div className="action-btn" onClick={() => copyLink(item)}>
+                        <div className="action-icon-wrap"><i className="fas fa-link" /></div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  /* ── Présentation ──────────────────────────────────────── */
+                  <>
+                    <div className="info">
+                      <div className="vendor-chip">
+                        <Link to={item.vendor?.user === userData?.user_id ? "/profile/" : `/customer/${item.vendor?.slug}/`}>
+                          <img src={item.vendor?.image} className="vendor-avatar-sm" alt="" />
+                        </Link>
+                        <Link
+                          to={item.vendor?.user === userData?.user_id ? "/profile/" : `/customer/${item.vendor?.slug}/`}
+                          className="vendor-name-link"
+                        >
+                          {item.vendor?.name}
+                        </Link>
+                        {item.vendor?.user !== userData?.user_id && (
+                          <span
+                            className={`follow-chip${followStates[item.vendor?.id] ? " following" : ""}`}
+                            onClick={() => userData ? toggleFollow(userData.user_id, item.vendor?.id) : setShowLogin(true)}
+                          >
+                            {followStates[item.vendor?.id] ? "Abonné" : "+ Suivre"}
+                          </span>
+                        )}
+                      </div>
+                      <h2 style={{ marginBottom: 6 }}>{item.title}</h2>
+                      {item.description && (
+                        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.82)", margin: "0 0 4px" }}>
+                          {item.description}
+                        </p>
+                      )}
+                      {item.link && (
+                        <a href={item.link} target="_blank" rel="noreferrer"
+                          style={{ color: "#DF468F", fontSize: 12 }}
+                        >
+                          {item.link}
+                        </a>
+                      )}
+                      {item.category?.title && (
+                        <span className="category-tag" style={{ marginTop: 6 }}>{item.category.title}</span>
+                      )}
+                    </div>
 
-                  <button className="srch-lb-action-btn" onClick={() => copyLink(item)} title="Partager">
-                    <i className="fas fa-link" />
-                  </button>
-                </div>
+                    <div className="actions">
+                      <div className="action-btn" onClick={() => handleLike(item.id)}>
+                        <div className="action-icon-wrap"><i className="fas fa-heart" /></div>
+                        <span>{item.likes_count || 0}</span>
+                      </div>
+                      <div className="action-btn" onClick={() => openCommentOverlay(lightboxList[idx])}>
+                        <div className="action-icon-wrap"><i className="fas fa-comment-dots" /></div>
+                        <span>{item.comments_count || 0}</span>
+                      </div>
+                      <div className="action-btn" onClick={() => copyLink(item)}>
+                        <div className="action-icon-wrap"><i className="fas fa-link" /></div>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             ))}
           </div>

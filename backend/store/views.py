@@ -600,6 +600,13 @@ class LikePresentationAPIView(APIView):
             return Response(status=404)
 
 
+class PresentationDetailAPIView(generics.RetrieveAPIView):
+    """Détail d'une présentation — inclut les commentaires complets."""
+    queryset = Presentation.objects.all()
+    serializer_class = PresentationSerializer
+    permission_classes = [AllowAny]
+
+
 class CommentCreateAPIView(generics.CreateAPIView):
     serializer_class = CommentSerializer
     permission_classes = [AllowAny]
