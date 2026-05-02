@@ -172,15 +172,20 @@ function Products() {
     const formdata = new FormData();
     formdata.append("product_id", productId);
     formdata.append("user_id", userData?.user_id);
-
-    const response = await axios.post(
-      `customer/wishlist/${userData?.user_id}/`,
-      formdata
-    );
-    Swal.fire({
-      icon: "success",
-      title: response.data.message,
-    });
+    try {
+      const res = await axios.post(`customer/wishlist/${userData?.user_id}/`, formdata);
+      Swal.fire({
+        toast: true, position: "bottom",
+        icon: "success", title: res.data.message,
+        showConfirmButton: false, timer: 2000,
+      });
+    } catch {
+      Swal.fire({
+        toast: true, position: "bottom",
+        icon: "error", title: "Erreur lors de l'ajout",
+        showConfirmButton: false, timer: 2000,
+      });
+    }
   };
 
   // useEffect(() => {

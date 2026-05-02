@@ -110,4 +110,7 @@ path('search_by_text/', store_views.search_by_text, name='text_search'),  # Rech
     # ── Vérification identité vendeur (soumission live) ───────────────────────
     path('vendor/request-verification/',      vendor_views.VendorRequestVerificationView.as_view(), name='vendor-request-verification'),
     path('vendor/verification-status/',       vendor_views.VendorVerificationStatusView.as_view(),  name='vendor-verification-status'),
+
+    # ── Préférences catégories (onboarding invité → compte) ───────────────────
+    path('save-category-preferences/<int:user_id>/', store_views.SaveCategoryPreferencesView.as_view(), name='save-category-preferences'),
 ]

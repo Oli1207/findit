@@ -43,7 +43,19 @@ const ProductDetailFeed = () => {
       try {
         const res = await axios.get(`products/${slug}/`);
         setProduct(res.data);
-        setGallery([res.data.image, ...res.data.gallery.map(g => g.image)]);
+        // Normalisation robuste : gallery peut contenir des strings, des objets
+        // {image: "url"}, ou des objets {image: {url: "..."}}
+        const resolveImg = (g) => {
+          if (!g) return null;
+          if (typeof g === 'string') return g;
+          const img = g.image ?? g.url ?? g.path ?? null;
+          if (!img) return null;
+          if (typeof img === 'string') return img;
+          return img.url ?? img.path ?? null;
+        };
+        const galleryUrls = (res.data.gallery || []).map(resolveImg).filter(Boolean);
+        const mainImage = resolveImg(res.data.image) ?? res.data.image;
+        setGallery([mainImage, ...galleryUrls].filter(Boolean));
       } catch (error) {
         Swal.fire("Erreur", "Produit introuvable", "error");
         navigate("/");
@@ -132,20 +144,30 @@ const ProductDetailFeed = () => {
   };
 
   const addToWishList = async () => {
+    if (!userData) {
+      Swal.fire({ toast: true, position: "bottom", icon: "warning",
+        title: "Connecte-toi pour ajouter aux favoris",
+        showConfirmButton: false, timer: 2000 });
+      return;
+    }
     const formdata = new FormData();
     formdata.append("product_id", product.id);
     formdata.append("user_id", userData?.user_id);
-
-    const response = await axios.post(
-      `customer/wishlist/${userData?.user_id}/`,
-      formdata
-    );
-    Swal.fire({
-      icon: "success",
-      title: response.data.message,
-    });
+    try {
+      const res = await axios.post(`customer/wishlist/${userData?.user_id}/`, formdata);
+      Swal.fire({
+        toast: true, position: "bottom",
+        icon: "success", title: res.data.message,
+        showConfirmButton: false, timer: 2000,
+      });
+    } catch {
+      Swal.fire({
+        toast: true, position: "bottom",
+        icon: "error", title: "Erreur lors de l'ajout",
+        showConfirmButton: false, timer: 2000,
+      });
+    }
   };
-
   // 👇 NE PAS le mettre après `if (!product)`
 const swipeHandlers = useSwipeable({
   onSwipedLeft: () => setSelectedIndex((prev) => Math.min(prev + 1, gallery.length - 1)),

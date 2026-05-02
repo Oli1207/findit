@@ -145,8 +145,8 @@ if (loading) {
       <div className="top-bar">
         <div className="tabs">
           <span className="active">Haul</span>
-          <Link to="/suivis" className="text-decoration-none text-white">
-            <span>Suivis</span>
+          <Link to="/search" className="text-decoration-none text-white">
+            <span>Explorer</span>
           </Link>
           <Link to="/" className="text-decoration-none text-white">
             <span>Accueil</span>

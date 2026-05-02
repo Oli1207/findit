@@ -19,6 +19,7 @@ import BottomBar from "./BottomBar";
 import LoginModal from "../auth/LoginModal";
 import ProductSlider from "./ProductSlider";
 import BuyModal from "./BuyModal";
+import { useTheme } from "../../context/ThemeContext";
 
 const FollowedVendorsFeed = () => {
   const [profileData, setProfileData] = useState(null);
@@ -26,6 +27,7 @@ const FollowedVendorsFeed = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const axios = apiInstance;
   const userData = UserData();
+  const { toggle, isDark } = useTheme();
   const isMobile = useMediaQuery({ maxWidth: 768 });
   const currentAddress = GetCurrentAddress();
   const navigate = useNavigate();
@@ -39,9 +41,8 @@ const FollowedVendorsFeed = () => {
   const [replyingTo, setReplyingTo] = useState(null);
   const [replyValue, setReplyValue] = useState("");
   const videoRefs = useRef([]);
-  videoRefs.current = [];
-const [expandedText, setExpandedText] = useState({});
-
+  // Ne jamais réinitialiser videoRefs.current en dehors d'un effet — violation Rules of Hooks sinon
+  const [expandedText, setExpandedText] = useState({});
 
   const { followStates, fetchFollowStates, toggleFollow } = useFollowStore();
   const [loadingMore, setLoadingMore] = useState(false);
@@ -49,27 +50,8 @@ const [expandedText, setExpandedText] = useState({});
   const [hasMore, setHasMore] = useState(true);
   const startTimesRef = useRef({});
 
-  // 🔐 Si pas connecté : écran d'accès restreint + LoginModal
-  if (!userData) {
-    return (
-      <div className="vp-container">
-        <div className="vp-header">
-          <span onClick={() => navigate(-1)}>← Retour</span>
-        </div>
-        <div className="vp-not-logged">
-          <i className="fas fa-user-lock vp-icon-lock" />
-          <h2>Accès Restreint</h2>
-          <p>Connecte-toi pour voir le fil de tes vendeurs suivis.</p>
-          <button className="vp-btn-login" onClick={() => setShowLogin(true)}>
-            Se connecter
-          </button>
-        </div>
-        <LoginModal show={showLogin} onClose={() => setShowLogin(false)} />
-      </div>
-    );
-  }
-
   // --------- SYNC + PROFIL ---------
+  // ⚠️ Tous les hooks DOIVENT être déclarés avant tout return conditionnel
   useEffect(() => {
     setUser();
   }, []);
@@ -283,23 +265,24 @@ const [expandedText, setExpandedText] = useState({});
   };
 
   const addToWishList = async (productId) => {
-    if (!userData) {
-      setShowLogin(true);
-      return;
-    }
-
+    if (!userData) { setShowLogin(true); return; }
     const formdata = new FormData();
     formdata.append("product_id", productId);
     formdata.append("user_id", userData?.user_id);
-
-    const response = await axios.post(
-      `customer/wishlist/${userData?.user_id}/`,
-      formdata
-    );
-    Swal.fire({
-      icon: "success",
-      title: response.data.message,
-    });
+    try {
+      const res = await axios.post(`customer/wishlist/${userData?.user_id}/`, formdata);
+      Swal.fire({
+        toast: true, position: "bottom",
+        icon: "success", title: res.data.message,
+        showConfirmButton: false, timer: 2000,
+      });
+    } catch {
+      Swal.fire({
+        toast: true, position: "bottom",
+        icon: "error", title: "Erreur lors de l'ajout",
+        showConfirmButton: false, timer: 2000,
+      });
+    }
   };
 
   const toggleSpecification = (productId) => {
@@ -454,26 +437,95 @@ const truncateText = (text, max) => {
   return text.length > max ? text.slice(0, max) + "..." : text;
 };
 
-  // --------- LOADING ---------
-  if (loading) {
+  // --------- RENDER ---------
+  // 🔐 Non connecté — guard dans le JSX (jamais avant les hooks)
+  if (!userData) {
     return (
-      <div className="loading-spinner">
-        <i style={{ color: "#DF468F" }} className="fas fa-spinner fa-spin fa-3x" />
-        <span>Chargement du feed…</span>
+      <div className="app-container">
+        <div className="top-bar">
+          <div className="top-bar-left">
+            <button className="top-icon-btn top-theme-btn" onClick={toggle} aria-label="Changer le thème">
+              <i className={isDark ? "fas fa-sun" : "fas fa-moon"} />
+            </button>
+          </div>
+          <div className="top-tabs">
+            <Link to="/solde" className="tab-pill">🔥 Solde</Link>
+            <Link to="/" className="brand-center">find<span>IT</span></Link>
+            <Link to="/search" className="tab-pill">Explorer</Link>
+          </div>
+          <div className="top-bar-right">
+            <Link to="/search" className="top-icon-btn"><i className="fas fa-search" /></Link>
+          </div>
+        </div>
+        <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", height:"70vh", padding:"0 32px", textAlign:"center" }}>
+          <i className="fas fa-user-lock" style={{ fontSize:52, color:"#DF468F", opacity:0.7, marginBottom:20 }} />
+          <h2 style={{ color:"#f0f0f0", fontFamily:"Poppins,sans-serif", fontSize:20, fontWeight:700, marginBottom:10 }}>Accès Restreint</h2>
+          <p style={{ color:"rgba(255,255,255,0.5)", fontSize:14, marginBottom:24 }}>
+            Connecte-toi pour voir le fil de tes vendeurs suivis.
+          </p>
+          <button
+            onClick={() => setShowLogin(true)}
+            style={{ background:"linear-gradient(135deg,#DF468F,#c4317a)", color:"#fff", border:"none", borderRadius:50, padding:"12px 32px", fontWeight:700, fontSize:15, fontFamily:"Poppins,sans-serif", cursor:"pointer" }}
+          >
+            Se connecter
+          </button>
+        </div>
+        <BottomBar />
+        <LoginModal show={showLogin} onClose={() => setShowLogin(false)} />
       </div>
     );
   }
 
-  // --------- RENDER ---------
+  if (loading) {
+    return (
+      <div className="app-container">
+        <div className="top-bar">
+          <div className="top-bar-left">
+            <button className="top-icon-btn top-theme-btn" onClick={toggle} aria-label="Changer le thème">
+              <i className={isDark ? "fas fa-sun" : "fas fa-moon"} />
+            </button>
+          </div>
+          <div className="top-tabs">
+            <Link to="/solde" className="tab-pill">🔥 Solde</Link>
+            <Link to="/" className="brand-center">find<span>IT</span></Link>
+            <span className="tab-pill active">Suivis</span>
+          </div>
+          <div className="top-bar-right">
+            <Link to="/search" className="top-icon-btn"><i className="fas fa-search" /></Link>
+          </div>
+        </div>
+        <div className="feed-container">
+          {[0,1,2].map(i => (
+            <div key={i} className="feed-item feed-skel">
+              <div className="feed-skel-img" />
+              <div className="feed-skel-info">
+                <div className="feed-skel-line feed-skel-line--short" />
+                <div className="feed-skel-line" />
+                <div className="feed-skel-line feed-skel-line--medium" />
+              </div>
+            </div>
+          ))}
+        </div>
+        <BottomBar />
+      </div>
+    );
+  }
+
   return (
     <div className="app-container">
       {/* ── Top bar ── */}
       <div className="top-bar">
+        <div className="top-bar-left">
+          <button className="top-icon-btn top-theme-btn" onClick={toggle} aria-label="Changer le thème">
+            <i className={isDark ? "fas fa-sun" : "fas fa-moon"} />
+          </button>
+        </div>
         <div className="top-tabs">
           <Link to="/solde" className="tab-pill">🔥 Solde</Link>
           <Link to="/" className="brand-center">find<span>IT</span></Link>
           <span className="tab-pill active">Suivis</span>
         </div>
+
         <div className="top-bar-right">
           <Link to="/search" className="top-icon-btn">
             <i className="fas fa-search" />
@@ -531,7 +583,7 @@ const truncateText = (text, max) => {
                       )}
                     </div>
 
-                    <h2><Link to={`/detail/${item.slug}`}>{item.title}</Link></h2>
+                    <h2>{item.title}</h2>
                     <p>{item.description}</p>
 
                     <div className="price-row">

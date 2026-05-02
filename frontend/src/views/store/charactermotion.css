@@ -1,0 +1,415 @@
+/* =======================================================================
+   charactermotion.css — FindIT Character Motion System
+   Deux personnages SVG animés (Shopper 🛍 + Heartie ❤)
+   Principes Duolingo : squash & stretch, anticipation, follow-through
+   ======================================================================= */
+
+/* ───────────────────────────────────────────────────────────────────────
+   BASE DES PERSONNAGES
+   ─────────────────────────────────────────────────────────────────────── */
+.cm-char {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  transform-origin: center bottom;
+  filter: drop-shadow(0 6px 16px rgba(0,0,0,0.35));
+  transition: filter 0.2s;
+}
+.cm-char:active { filter: drop-shadow(0 2px 6px rgba(0,0,0,0.2)) brightness(0.9); }
+
+.cm-bag-svg  { width: 74px;  height: 94px;  overflow: visible; }
+.cm-heart-svg { width: 70px; height: 84px;  overflow: visible; }
+
+/* Corps du sac */
+.cm-bag-body  { fill: #DF468F; }
+.cm-bag-body-shade { fill: #c93d7e; }
+
+/* ── Éléments cachés par défaut ── */
+.cm-bag-arms          { opacity: 0; }
+.cm-cheek             { opacity: 0; transition: opacity 0.4s; }
+.cm-sparkles          { opacity: 0; }
+.cm-heart-pupils      { opacity: 0; transition: opacity 0.4s; }
+.cm-mouth             { opacity: 0; transition: opacity 0.3s; }
+
+/* Paupières : scaleY(0) = œil ouvert, scaleY(1) = œil fermé */
+.cm-eyelid {
+  transform-origin: center top;
+  transform: scaleY(0);
+}
+
+/* ───────────────────────────────────────────────────────────────────────
+   NIVEAU 0 — Aucune animation (avant 5s)
+   ─────────────────────────────────────────────────────────────────────── */
+.emotion-0 { opacity: 0; pointer-events: none; transform: scale(0); }
+
+/* ───────────────────────────────────────────────────────────────────────
+   NIVEAU 1 — Apparition douce (5s)
+   Bob léger, petit sourire, clignement lent
+   ─────────────────────────────────────────────────────────────────────── */
+.emotion-1 {
+  opacity: 1;
+  pointer-events: auto;
+  animation: cm-appear 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes cm-appear {
+  from { opacity: 0; transform: scale(0.3) translateY(20px); }
+  to   { opacity: 1; transform: scale(1)   translateY(0); }
+}
+
+.emotion-1.cm-bag   { animation: cm-appear 0.5s cubic-bezier(0.34,1.56,0.64,1) both,
+                                 cm-bob-1 1.6s 0.5s ease-in-out infinite; }
+.emotion-1.cm-heart { animation: cm-appear 0.5s cubic-bezier(0.34,1.56,0.64,1) both,
+                                 cm-float-1 2.2s 0.5s ease-in-out infinite; }
+
+.emotion-1 .cm-mouth-1 { opacity: 1; }
+.emotion-1 .cm-cheek   { opacity: 0.45; }
+.emotion-1 .cm-iris    { transform: scale(1); transform-origin: center; }
+.emotion-1 .cm-eyelid  { animation: cm-blink 3.5s ease-in-out infinite; }
+
+/* ───────────────────────────────────────────────────────────────────────
+   NIVEAU 2 — Plus heureux (13s)
+   Bounce avec squash/stretch, sourire large, pupilles dilatées
+   ─────────────────────────────────────────────────────────────────────── */
+.emotion-2.cm-bag   { animation: cm-bounce-2 1.0s ease-in-out infinite; }
+.emotion-2.cm-heart { animation: cm-float-2 1.5s ease-in-out infinite,
+                                 cm-heartbeat-2 1.0s ease-in-out infinite; }
+
+.emotion-2 .cm-mouth-2 { opacity: 1; }
+.emotion-2 .cm-cheek   { opacity: 0.7; }
+.emotion-2 .cm-iris    { transform: scale(1.15); transform-origin: center;
+                          transition: transform 0.4s; }
+.emotion-2 .cm-eyelid  { animation: cm-blink 2.8s ease-in-out infinite; }
+
+/* ───────────────────────────────────────────────────────────────────────
+   NIVEAU 3 — Excité (21s)
+   Sauts frénétiques, bras agités, étincelles, sourcils levés
+   ─────────────────────────────────────────────────────────────────────── */
+.emotion-3.cm-bag   { animation: cm-bounce-3 0.72s ease-in-out infinite; }
+.emotion-3.cm-heart { animation: cm-float-3 1.0s ease-in-out infinite,
+                                 cm-heartbeat-3 0.7s ease-in-out infinite; }
+
+.emotion-3 .cm-mouth-3    { opacity: 1; }
+.emotion-3 .cm-cheek      { opacity: 1; }
+.emotion-3 .cm-bag-arms   { opacity: 1; animation: cm-arms-wave 0.65s ease-in-out infinite alternate; }
+.emotion-3 .cm-sparkles   { opacity: 1; animation: cm-sparkle-anim 1.1s ease-in-out infinite alternate; }
+.emotion-3 .cm-iris       { transform: scale(1.3); transform-origin: center; }
+.emotion-3 .cm-eyebrow    { animation: cm-eyebrows-up 0.65s ease-in-out infinite alternate; }
+.emotion-3 .cm-eyelid     { animation: cm-blink 1.6s ease-in-out infinite; }
+
+/* ───────────────────────────────────────────────────────────────────────
+   NIVEAU 4 — Écstatique (29s)
+   Maximum absolu — rotation, pupilles cœur, grin ouvert
+   ─────────────────────────────────────────────────────────────────────── */
+.emotion-4.cm-bag   { animation: cm-bounce-4 0.42s ease-in-out infinite; }
+.emotion-4.cm-heart { animation: cm-float-4 0.7s ease-in-out infinite,
+                                 cm-heartbeat-4 0.42s ease-in-out infinite; }
+
+.emotion-4 .cm-mouth-4      { opacity: 1; }
+.emotion-4 .cm-cheek        { opacity: 1; }
+.emotion-4 .cm-bag-arms     { opacity: 1; animation: cm-arms-frenzy 0.38s ease-in-out infinite alternate; }
+.emotion-4 .cm-sparkles     { opacity: 1; animation: cm-sparkle-frenzy 0.45s ease-in-out infinite alternate; }
+.emotion-4 .cm-heart-pupils { opacity: 1; }
+.emotion-4 .cm-iris         { transform: scale(1.45); transform-origin: center;
+                               fill: #cc1a4a; transition: fill 0.3s; }
+.emotion-4 .cm-eyebrow      { animation: cm-eyebrows-frenzy 0.38s ease-in-out infinite alternate; }
+.emotion-4 .cm-eyelid       { animation: cm-blink 0.85s ease-in-out infinite; }
+.emotion-4 .cm-bag-body     { animation: cm-bag-glow 0.8s ease-in-out infinite alternate; }
+.emotion-4 .cm-heart-body   { animation: cm-heart-glow 0.8s ease-in-out infinite alternate; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   KEYFRAMES — BOUNCE (SAC SHOPPER)
+   Squash = scaleX↑ scaleY↓ à l'atterrissage
+   Stretch = scaleX↓ scaleY↑ à la montée
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Niveau 1 : bob doux, pas de déformation */
+@keyframes cm-bob-1 {
+  0%, 100% { transform: translateY(0) scaleX(1) scaleY(1); }
+  50%       { transform: translateY(-9px) scaleX(0.97) scaleY(1.03); }
+}
+
+/* Niveau 2 : premier squash/stretch */
+@keyframes cm-bounce-2 {
+  0%   { transform: translateY(0)     scaleX(1)    scaleY(1); }
+  18%  { transform: translateY(-18px) scaleX(0.88) scaleY(1.14); } /* stretch montée */
+  38%  { transform: translateY(0)     scaleX(1.16) scaleY(0.86); } /* squash atterrissage */
+  52%  { transform: translateY(-7px)  scaleX(0.94) scaleY(1.06); } /* rebond léger */
+  68%  { transform: translateY(0)     scaleX(1.06) scaleY(0.94); } /* mini squash */
+  100% { transform: translateY(0)     scaleX(1)    scaleY(1); }
+}
+
+/* Niveau 3 : anticipation + gros squash */
+@keyframes cm-bounce-3 {
+  0%   { transform: translateY(0)     scaleX(1)    scaleY(1)    rotate(0deg); }
+  8%   { transform: translateY(4px)   scaleX(1.08) scaleY(0.93) rotate(-1deg); } /* anticipation */
+  28%  { transform: translateY(-26px) scaleX(0.82) scaleY(1.2)  rotate(2deg); }  /* stretch */
+  48%  { transform: translateY(0)     scaleX(1.2)  scaleY(0.82) rotate(-2deg); } /* squash */
+  62%  { transform: translateY(-10px) scaleX(0.9)  scaleY(1.1)  rotate(1deg); }  /* rebond */
+  78%  { transform: translateY(0)     scaleX(1.07) scaleY(0.93) rotate(0deg); }
+  100% { transform: translateY(0)     scaleX(1)    scaleY(1)    rotate(0deg); }
+}
+
+/* Niveau 4 : frénésie totale */
+@keyframes cm-bounce-4 {
+  0%   { transform: translateY(0)     scaleX(1)    scaleY(1)    rotate(-3deg); }
+  10%  { transform: translateY(6px)   scaleX(1.1)  scaleY(0.91) rotate(3deg); }  /* anticipation */
+  30%  { transform: translateY(-30px) scaleX(0.78) scaleY(1.24) rotate(-4deg); } /* stretch max */
+  50%  { transform: translateY(0)     scaleX(1.24) scaleY(0.78) rotate(4deg); }  /* squash max */
+  65%  { transform: translateY(-13px) scaleX(0.88) scaleY(1.12) rotate(-3deg); }
+  80%  { transform: translateY(0)     scaleX(1.09) scaleY(0.92) rotate(3deg); }
+  100% { transform: translateY(0)     scaleX(1)    scaleY(1)    rotate(-3deg); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   KEYFRAMES — FLOAT + HEARTBEAT (HEARTIE)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+@keyframes cm-float-1 {
+  0%, 100% { transform: translateY(0)     rotate(0deg); }
+  50%       { transform: translateY(-11px) rotate(3deg); }
+}
+@keyframes cm-float-2 {
+  0%, 100% { transform: translateY(0)     rotate(-4deg) scale(1); }
+  50%       { transform: translateY(-17px) rotate(4deg)  scale(1.04); }
+}
+@keyframes cm-float-3 {
+  0%, 100% { transform: translateY(0)     rotate(-6deg) scale(1); }
+  35%       { transform: translateY(-22px) rotate(6deg)  scale(1.08); }
+  70%       { transform: translateY(-8px)  rotate(-3deg) scale(1.02); }
+}
+@keyframes cm-float-4 {
+  0%   { transform: translateY(0)     rotate(-9deg) scale(1); }
+  25%  { transform: translateY(-25px) rotate(9deg)  scale(1.12); }
+  50%  { transform: translateY(-6px)  rotate(-5deg) scale(0.95); }
+  75%  { transform: translateY(-20px) rotate(7deg)  scale(1.1); }
+  100% { transform: translateY(0)     rotate(-9deg) scale(1); }
+}
+
+@keyframes cm-heartbeat-2 {
+  0%, 100% { transform: scale(1); }
+  14%       { transform: scale(1.09); }
+  28%       { transform: scale(1.01); }
+  42%       { transform: scale(1.05); }
+  70%       { transform: scale(1); }
+}
+@keyframes cm-heartbeat-3 {
+  0%, 100% { transform: scale(1); }
+  14%       { transform: scale(1.14); }
+  28%       { transform: scale(0.98); }
+  42%       { transform: scale(1.08); }
+  70%       { transform: scale(1); }
+}
+@keyframes cm-heartbeat-4 {
+  0%, 100% { transform: scale(1); }
+  14%       { transform: scale(1.2); }
+  28%       { transform: scale(0.94); }
+  42%       { transform: scale(1.14); }
+  70%       { transform: scale(0.97); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   KEYFRAMES — YEUX & SOURCILS
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Clignement : paupière descend et remonte */
+@keyframes cm-blink {
+  0%, 88%, 100% { transform: scaleY(0); }  /* œil ouvert */
+  93%            { transform: scaleY(1); }  /* œil fermé  */
+}
+
+@keyframes cm-eyebrows-up {
+  from { transform: translateY(0px); }
+  to   { transform: translateY(-3.5px); }
+}
+@keyframes cm-eyebrows-frenzy {
+  from { transform: translateY(-2px) rotate(-6deg); }
+  to   { transform: translateY(-6px) rotate(6deg); }
+}
+
+/* Dilatation pupilles */
+@keyframes cm-iris-grow {
+  from { transform: scale(1); }
+  to   { transform: scale(1.45); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   KEYFRAMES — BRAS (SAC)
+   ═══════════════════════════════════════════════════════════════════════ */
+@keyframes cm-arms-wave {
+  from { transform: rotate(-18deg) translateY(0); }
+  to   { transform: rotate(18deg)  translateY(-6px); }
+}
+@keyframes cm-arms-frenzy {
+  from { transform: rotate(-28deg) translateY(-4px) scaleY(1); }
+  to   { transform: rotate(28deg)  translateY(-12px) scaleY(1.1); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   KEYFRAMES — SPARKLES
+   ═══════════════════════════════════════════════════════════════════════ */
+@keyframes cm-sparkle-anim {
+  from { opacity: 0.5; transform: scale(0.7) rotate(0deg); }
+  to   { opacity: 1.0; transform: scale(1.3) rotate(35deg); }
+}
+@keyframes cm-sparkle-frenzy {
+  from { opacity: 0.7; transform: scale(0.9)  rotate(0deg); }
+  to   { opacity: 1.0; transform: scale(1.55) rotate(55deg); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   KEYFRAMES — GLOW (niveau 4)
+   ═══════════════════════════════════════════════════════════════════════ */
+@keyframes cm-bag-glow {
+  from { fill: #DF468F; }
+  to   { fill: #ff5aa0; }
+}
+@keyframes cm-heart-glow {
+  from { fill: url(#heartGrad); }
+  to   { fill: #ff3d6e; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   FOCUSED MODE OVERLAY
+   ═══════════════════════════════════════════════════════════════════════ */
+.cm-focused-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 180;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  animation: cm-overlay-in 0.38s cubic-bezier(0.34, 1.1, 0.64, 1) both;
+  touch-action: pan-y;
+}
+@keyframes cm-overlay-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Zone images (plein écran moins la bottombar) */
+.cm-product-images {
+  position: absolute;
+  inset: 0;
+  bottom: 64px; /* height de la bottombar */
+}
+/* Le ProductSlider doit remplir ce conteneur */
+.cm-product-images .feed-image,
+.cm-product-images img,
+.cm-product-images video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Panel personnages — droite, centré verticalement */
+.cm-characters {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-65%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  z-index: 10;
+}
+
+/* Entrée des personnages depuis la droite */
+.cm-char-enter {
+  animation: cm-char-enter-anim 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.cm-char-enter-delay {
+  animation: cm-char-enter-anim 0.55s 0.12s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes cm-char-enter-anim {
+  from { opacity: 0; transform: translateX(70px) scale(0.4) rotate(15deg); }
+  to   { opacity: 1; transform: translateX(0)    scale(1)   rotate(0deg); }
+}
+
+/* Boutons d'actions en bas */
+.cm-bottom-actions {
+  position: absolute;
+  bottom: 76px;
+  left: 0;
+  right: 104px; /* laisser la place aux characters */
+  display: flex;
+  gap: 10px;
+  padding: 0 16px;
+  animation: cm-actions-in 0.4s 0.25s ease-out both;
+}
+@keyframes cm-actions-in {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.cm-action-btn {
+  flex: 1;
+  padding: 11px 0;
+  background: rgba(255,255,255,0.13);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.22);
+  border-radius: 50px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'Poppins', sans-serif;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s, transform 0.1s;
+}
+.cm-action-btn:active {
+  background: rgba(255,255,255,0.22);
+  transform: scale(0.96);
+}
+
+/* Hint "Touche pour quitter" */
+.cm-tap-hint {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255,255,255,0.55);
+  font-size: 11px;
+  font-family: 'Poppins', sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: cm-hint-fade 3.5s 0.5s ease-out forwards;
+}
+@keyframes cm-hint-fade {
+  0%, 60% { opacity: 1; }
+  100%     { opacity: 0; }
+}
+
+/* Gradients top/bottom pour lisibilité */
+.cm-focused-overlay::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 80px;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);
+  z-index: 5;
+  pointer-events: none;
+}
+.cm-focused-overlay::after {
+  content: '';
+  position: absolute;
+  bottom: 64px; left: 0; right: 0;
+  height: 120px;
+  background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+  z-index: 5;
+  pointer-events: none;
+}

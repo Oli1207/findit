@@ -18,6 +18,9 @@ import BottomBar from "./BottomBar";
 import LoginModal from "../auth/LoginModal";
 import ProductSlider from "./ProductSlider";
 import BuyModal from "./BuyModal";
+import { useTheme } from "../../context/ThemeContext";
+import { BagCharacter, HeartCharacter } from "./CharacterMotion";
+import CategoryOnboarding from "./CategoryOnboarding";
 
 const TikTokFeed = () => {
   const [profileData, setProfileData] = useState(null);
@@ -25,6 +28,7 @@ const TikTokFeed = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const axios = apiInstance;
   const userData = UserData();
+  const { toggle, isDark } = useTheme();
   const isMobile = useMediaQuery({ maxWidth: 768 });
   const currentAddress = GetCurrentAddress();
   const navigate = useNavigate();
@@ -55,6 +59,54 @@ const [showLogin, setShowLogin] = useState(false);
   // videoRefs.current = []; // Nettoie avant chaque nouveau rendu de .map
 
 const [expandedText, setExpandedText] = useState({});
+
+  // ── Onboarding catégories (invités) ──────────────────────────────────────
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [guestCats, setGuestCats] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('findit_guest_cats') || '[]');
+    } catch { return []; }
+  });
+
+  useEffect(() => {
+    // Montrer l'onboarding uniquement si : pas connecté + jamais fait
+    if (!userData && !localStorage.getItem('findit_onboarded')) {
+      // Petit délai pour laisser le feed apparaître d'abord
+      const t = setTimeout(() => setShowOnboarding(true), 800);
+      return () => clearTimeout(t);
+    }
+  }, [userData]);
+
+  // Quand l'utilisateur se connecte après avoir sélectionné des catégories en invité
+  // → on envoie les slugs au backend pour créer des CategoryInterest
+  useEffect(() => {
+    if (!userData?.user_id) return;
+    const savedCats = (() => {
+      try { return JSON.parse(localStorage.getItem('findit_guest_cats') || '[]'); }
+      catch { return []; }
+    })();
+    if (savedCats.length > 0) {
+      apiInstance.post(`save-category-preferences/${userData.user_id}/`, {
+        categories: savedCats,
+      }).then(() => {
+        // Supprimer après synchro pour ne pas re-envoyer
+        localStorage.removeItem('findit_guest_cats');
+      }).catch(() => {});
+    }
+  }, [userData?.user_id]);
+
+  // ── Character Motion state ─────────────────────────────────────────────────
+  const [focusedItemId,   setFocusedItemId]   = useState(null);
+  const [focusedItem,     setFocusedItem]     = useState(null);
+  const [enthusiasmLevel, setEnthusiasmLevel] = useState(0);
+  const focusTimerRef        = useRef(null);
+  const enthusiasmIntervalRef = useRef(null);
+  const currentVisibleRef    = useRef(null);   // id du produit actuellement visible
+  // Ref miroir de products pour les closures dans setTimeout
+  const productsRef = useRef([]);
+
+  // Garde productsRef synchronisé
+  useEffect(() => { productsRef.current = products; }, [products]);
 
   //tous les syncs
   useEffect(() => {
@@ -127,20 +179,40 @@ const [expandedText, setExpandedText] = useState({});
       return { ...item, type: resolvedType, image: mainImage, gallery: galleryImages };
     });
 
+  // ─── Clé de cache localStorage pour le feed (par user_id ou "anon") ─────────
+  const FEED_CACHE_KEY = `findit_feed_${userData?.user_id || "anon"}`;
+
   // ─── Chargement du feed (initial ou pagination) ──────────────────────────────
   const fetchProducts = async (pageNum = 1, append = false) => {
-    if (pageNum === 1) setLoading(true);
+    // Page 1 : si on a un cache local valide (< 3 min), l'afficher immédiatement
+    // puis revalider en arrière-plan (stale-while-revalidate)
+    if (pageNum === 1 && !append) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(FEED_CACHE_KEY) || "null");
+        if (saved && Date.now() - saved.ts < 3 * 60 * 1000) {
+          setProducts(saved.items);
+          setHasMore(saved.hasMore ?? true);
+          setLoading(false);
+          // On continue le fetch pour mettre à jour en fond (pas de return)
+        }
+      } catch { /* localStorage indisponible */ }
+    }
+
+    if (pageNum === 1) setLoading((p) => (products.length === 0 ? true : p));
     else setLoadingMore(true);
 
     try {
+      // Pour les invités : ajouter ?cats= si des catégories ont été sélectionnées
+      const catsParam = (!userData?.user_id && guestCats.length > 0)
+        ? `&cats=${guestCats.join(',')}`
+        : '';
       const url = userData?.user_id
         ? `unified-feed/${userData.user_id}/?page=${pageNum}`
-        : `popular-products/?page=${pageNum}`;
+        : `popular-products/?page=${pageNum}${catsParam}`;
 
       const response = await axios.get(url);
       const data     = response.data;
 
-      // Supporte l'ancien format (tableau) et le nouveau {results, page, has_more}
       const rawItems = Array.isArray(data) ? data : (data.results || []);
       const more     = Array.isArray(data) ? false : (data.has_more ?? false);
 
@@ -150,12 +222,17 @@ const [expandedText, setExpandedText] = useState({});
         setProducts((prev) => [...prev, ...transformed]);
       } else {
         setProducts(transformed);
+        // Mettre en cache page 1 pour la prochaine visite
+        try {
+          localStorage.setItem(FEED_CACHE_KEY, JSON.stringify({
+            items: transformed, hasMore: more, ts: Date.now(),
+          }));
+        } catch { /* quota exceeded, pas grave */ }
       }
 
       setHasMore(more);
       setCurrentPage(pageNum);
 
-      // États de suivi vendeur
       if (userData?.user_id) {
         const vendorIds = rawItems.map((p) => p.vendor?.id).filter(Boolean);
         if (vendorIds.length) await fetchFollowStates(vendorIds, userData.user_id);
@@ -248,6 +325,57 @@ const [expandedText, setExpandedText] = useState({});
       items.forEach((el) => observer.unobserve(el));
     };
   }, []);
+  // ── Observer : déclenche le focused mode après 5s sur un produit ────────────
+  // On garde l'observer actif même pendant le focused mode pour tracker
+  // la visibilité (nécessaire pour le "retour des personnages" après slide)
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const charId = entry.target.getAttribute("data-char-id");
+          if (!charId) return;
+
+          if (entry.isIntersecting) {
+            // Nouveau produit visible → on démarre le timer de 5s
+            if (currentVisibleRef.current !== charId) {
+              // Annule le timer de l'ancien produit s'il était en cours
+              if (focusTimerRef.current) {
+                clearTimeout(focusTimerRef.current);
+                focusTimerRef.current = null;
+              }
+              currentVisibleRef.current = charId;
+              focusTimerRef.current = setTimeout(() => {
+                // L'utilisateur est resté 5s → on ouvre le focused mode
+                const item = productsRef.current.find(
+                  (p) => p.type === "product" && String(p.id) === charId
+                );
+                if (item) startFocusMode(item);
+              }, 5000);
+            }
+          } else {
+            // Produit sorti du viewport → annule le timer
+            if (currentVisibleRef.current === charId) {
+              currentVisibleRef.current = null;
+              if (focusTimerRef.current) {
+                clearTimeout(focusTimerRef.current);
+                focusTimerRef.current = null;
+              }
+            }
+          }
+        });
+      },
+      { threshold: 0.8 }
+    );
+
+    const items = document.querySelectorAll(".feed-item[data-char-id]");
+    items.forEach((el) => observer.observe(el));
+
+    return () => {
+      observer.disconnect();
+      if (focusTimerRef.current) clearTimeout(focusTimerRef.current);
+    };
+  }, [products]);
+
   // Récupère ?product=ID ou ?presentation=ID dans l'URL
 
   useEffect(() => {
@@ -471,23 +599,61 @@ useEffect(() => {
   };
 
 
-  const addToWishList = async (productId) => {
-     if (!userData) {
-      setShowLogin(true);
-      return;
+  // ── Character Motion helpers ───────────────────────────────────────────────
+  const startFocusMode = (item) => {
+    setFocusedItemId(item.id);
+    setFocusedItem(item);
+    setEnthusiasmLevel(1);
+    // Enthousiasme monte de 1 niveau toutes les 8s (max 4)
+    enthusiasmIntervalRef.current = setInterval(() => {
+      setEnthusiasmLevel((prev) => Math.min(4, prev + 1));
+    }, 8000);
+  };
+
+  const exitFocusMode = (itemIdOverride) => {
+    const wasOnId = String(itemIdOverride ?? focusedItemId ?? '');
+    setFocusedItemId(null);
+    setFocusedItem(null);
+    setEnthusiasmLevel(0);
+    if (enthusiasmIntervalRef.current) {
+      clearInterval(enthusiasmIntervalRef.current);
+      enthusiasmIntervalRef.current = null;
     }
+    // Si l'utilisateur est encore sur ce produit (ex : slide d'images),
+    // relancer le timer de 5s pour que les personnages reviennent
+    if (wasOnId && currentVisibleRef.current === wasOnId) {
+      focusTimerRef.current = setTimeout(() => {
+        if (currentVisibleRef.current !== wasOnId) return;
+        const item = productsRef.current.find(
+          (p) => p.type === 'product' && String(p.id) === wasOnId
+        );
+        if (item) startFocusMode(item);
+      }, 5000);
+    }
+  };
+
+  // Swipe bas = quitter le focused mode
+  const focusedSwipe = useSwipeable({ onSwipedDown: exitFocusMode, trackMouse: false });
+
+  const addToWishList = async (productId) => {
+    if (!userData) { setShowLogin(true); return; }
     const formdata = new FormData();
     formdata.append("product_id", productId);
     formdata.append("user_id", userData?.user_id);
-
-    const response = await axios.post(
-      `customer/wishlist/${userData?.user_id}/`,
-      formdata
-    );
-    Swal.fire({
-      icon: "success",
-      title: response.data.message,
-    });
+    try {
+      const res = await axios.post(`customer/wishlist/${userData?.user_id}/`, formdata);
+      Swal.fire({
+        toast: true, position: "bottom",
+        icon: "success", title: res.data.message,
+        showConfirmButton: false, timer: 2000,
+      });
+    } catch {
+      Swal.fire({
+        toast: true, position: "bottom",
+        icon: "error", title: "Erreur lors de l'ajout",
+        showConfirmButton: false, timer: 2000,
+      });
+    }
   };
 
   const toggleSpecification = (productId) => {
@@ -656,11 +822,38 @@ const truncateText = (text, max) => {
 };
 
   // fin vidéo
-  if (loading) {
+  // ── Skeleton feed (3 cartes placeholder pendant le chargement initial) ──
+  if (loading && products.length === 0) {
     return (
-      <div className="loading-spinner">
-        <i style={{ color: "#DF468F" }} className="fas fa-spinner fa-spin fa-3x" />
-        <span>Chargement du feed…</span>
+      <div className="app-container">
+        <div className="top-bar">
+          <div className="top-bar-left">
+            <button className="top-icon-btn top-theme-btn" onClick={toggle} aria-label="Changer le thème">
+              <i className={isDark ? "fas fa-sun" : "fas fa-moon"} />
+            </button>
+          </div>
+          <div className="top-tabs">
+            <Link to="/solde" className="tab-pill">🔥 Solde</Link>
+            <Link to="/" className="brand-center">find<span>IT</span></Link>
+            <Link to="/search" className="tab-pill">Explorer</Link>
+          </div>
+          <div className="top-bar-right">
+            <Link to="/search" className="top-icon-btn"><i className="fas fa-search" /></Link>
+          </div>
+        </div>
+        <div className="feed-container">
+          {[0, 1, 2].map(i => (
+            <div key={i} className="feed-item feed-skel">
+              <div className="feed-skel-img" />
+              <div className="feed-skel-info">
+                <div className="feed-skel-line feed-skel-line--short" />
+                <div className="feed-skel-line" />
+                <div className="feed-skel-line feed-skel-line--medium" />
+              </div>
+            </div>
+          ))}
+        </div>
+        <BottomBar />
       </div>
     );
   }
@@ -669,12 +862,33 @@ const truncateText = (text, max) => {
     <div className="app-container">
       <InstallButton />
 
+      {/* ── Onboarding catégories (premier lancement, invité) ── */}
+      {showOnboarding && (
+        <CategoryOnboarding
+          onComplete={(cats) => {
+            setGuestCats(cats);
+            setShowOnboarding(false);
+            // Relancer le feed avec les nouvelles catégories
+            if (cats.length > 0) {
+              setProducts([]);
+              setLoading(true);
+              fetchProducts(1, false);
+            }
+          }}
+        />
+      )}
+
       {/* ── Top bar ── */}
       <div className="top-bar">
+        <div className="top-bar-left">
+          <button className="top-icon-btn top-theme-btn" onClick={toggle} aria-label="Changer le thème">
+            <i className={isDark ? "fas fa-sun" : "fas fa-moon"} />
+          </button>
+        </div>
         <div className="top-tabs">
           <Link to="/solde" className="tab-pill">🔥 Solde</Link>
           <Link to="/" className="brand-center">find<span>IT</span></Link>
-          <Link to="/suivis" className="tab-pill">Suivis</Link>
+          <Link to="/search" className="tab-pill">Explorer</Link>
         </div>
         <div className="top-bar-right">
           <Link to="/search" className="top-icon-btn">
@@ -690,6 +904,7 @@ const truncateText = (text, max) => {
             ref={(el) => { feedItemRefs.current[index] = el; }}
             className="feed-item"
             data-id={`${item.type}-${item.id}`}
+            data-char-id={item.type === "product" ? String(item.id) : undefined}
             key={`${item.type}-${item.id}`}
           >
             {item.type === "product" ? (
@@ -722,15 +937,25 @@ const truncateText = (text, max) => {
                     )}
                   </div>
 
-                  <h2><Link to={`/detail/${item.slug}`}>{item.title}</Link></h2>
+                  {/* Badge "Nouveau" — produits de moins de 48h */}
+                  {item.date && (Date.now() - new Date(item.date).getTime()) < 48 * 3600 * 1000 && (
+                    <span className="feed-new-badge">✦ Nouveau</span>
+                  )}
+
+                  <h2>{item.title}</h2>
                   <p>{item.description}</p>
 
-                  {/* Prix */}
+                  {/* Prix + badge réduction */}
                   <div className="price-row">
                     {item.old_price && Number(item.old_price) > Number(item.price) && (
-                      <span className="price-old">
-                        {Math.round(Number(item.old_price)).toLocaleString("fr-FR")} frs
-                      </span>
+                      <>
+                        <span className="price-old">
+                          {Math.round(Number(item.old_price)).toLocaleString("fr-FR")} frs
+                        </span>
+                        <span className="feed-discount-badge">
+                          -{Math.round((1 - Number(item.price) / Number(item.old_price)) * 100)}%
+                        </span>
+                      </>
                     )}
                     <span className="price-current">
                       {Math.round(Number(item.price)).toLocaleString("fr-FR")} frs
@@ -802,6 +1027,7 @@ const truncateText = (text, max) => {
                   loop
                   playsInline
                   muted
+                  preload="none"
                   onClick={(e) => {
                     const v = e.target;
                     v.paused ? v.play() : v.pause();
@@ -849,6 +1075,68 @@ const truncateText = (text, max) => {
 
       <BottomBar />
       <LoginModal show={showLogin} onClose={() => setShowLogin(false)} />
+
+      {/* ── Focused Mode Overlay (Character Motion) ── */}
+      {focusedItemId && focusedItem && (
+        <div
+          className="cm-focused-overlay"
+          {...focusedSwipe}
+        >
+          {/* Hint "touche pour quitter" — disparaît après 3.5s */}
+          <div className="cm-tap-hint">
+            <i className="fas fa-hand-point-up" /> Touche l'image pour quitter
+          </div>
+
+          {/* Images du produit — tap pour fermer */}
+          <div className="cm-product-images" onClick={exitFocusMode}>
+            <ProductSlider item={focusedItem} />
+          </div>
+
+          {/* Personnages animés — droite */}
+          <div className="cm-characters">
+            <BagCharacter
+              emotionLevel={enthusiasmLevel}
+              onClick={(e) => {
+                e.stopPropagation();
+                exitFocusMode();
+                handleOrderClick(focusedItem);
+              }}
+            />
+            <HeartCharacter
+              emotionLevel={enthusiasmLevel}
+              onClick={(e) => {
+                e.stopPropagation();
+                addToWishList(focusedItem.id);
+                exitFocusMode();
+              }}
+            />
+          </div>
+
+          {/* Boutons d'action en bas */}
+          <div className="cm-bottom-actions">
+            <button
+              className="cm-action-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                exitFocusMode(focusedItem.id);
+                handleReviewIconClick(focusedItem);
+              }}
+            >
+              <i className="fas fa-star" /> Laisser un avis
+            </button>
+            <button
+              className="cm-action-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCopyLink(focusedItem);
+                exitFocusMode(focusedItem.id);
+              }}
+            >
+              <i className="fas fa-link" /> Partager
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Overlay avis ── */}
       {selectedProduct && (

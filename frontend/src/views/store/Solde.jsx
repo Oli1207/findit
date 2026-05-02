@@ -459,18 +459,24 @@ videoRefs.current = []; // Nettoie avant chaque nouveau rendu de .map
   };
 
   const addToWishList = async (productId) => {
+    if (!userData) { setShowLogin(true); return; }
     const formdata = new FormData();
     formdata.append("product_id", productId);
     formdata.append("user_id", userData?.user_id);
-
-    const response = await axios.post(
-      `customer/wishlist/${userData?.user_id}/`,
-      formdata
-    );
-    Swal.fire({
-      icon: "success",
-      title: response.data.message,
-    });
+    try {
+      const res = await axios.post(`customer/wishlist/${userData?.user_id}/`, formdata);
+      Swal.fire({
+        toast: true, position: "bottom",
+        icon: "success", title: res.data.message,
+        showConfirmButton: false, timer: 2000,
+      });
+    } catch {
+      Swal.fire({
+        toast: true, position: "bottom",
+        icon: "error", title: "Erreur lors de l'ajout",
+        showConfirmButton: false, timer: 2000,
+      });
+    }
   };
 
   const toggleSpecification = (productId) => {
@@ -655,7 +661,7 @@ const handleCloseCommentOverlay = () => {
         <div className="top-tabs">
           <span className="tab-pill active">🔥 Solde</span>
           <Link to="/" className="brand-center">find<span>IT</span></Link>
-          <Link to="/suivis" className="tab-pill">Suivis</Link>
+          <Link to="/search" className="tab-pill">Explorer</Link>
         </div>
         <div className="top-bar-right">
           <Link to="/search" className="top-icon-btn">
@@ -714,7 +720,7 @@ const handleCloseCommentOverlay = () => {
                       )}
                     </div>
 
-                    <h2><Link to={`/detail/${item.slug}`}>{item.title}</Link></h2>
+                    <h2>{item.title}</h2>
                     <p>{item.description}</p>
 
                     {/* Prix avec badge de réduction */}

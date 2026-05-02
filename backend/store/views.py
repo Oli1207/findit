@@ -35,6 +35,7 @@ from rest_framework.pagination import PageNumberPagination
 from django.views.decorators.cache import cache_page
 from itertools import chain
 from django.utils.decorators import method_decorator
+from django.core.cache import cache
 
 def send_push_notification(user, title, body, url="/"):
     from .models import PushNotificationSubscription
@@ -234,8 +235,11 @@ class PersonalizedProductFeed(ListAPIView):
 
 # ─── Feed helpers ──────────────────────────────────────────────────────────────
 
-FEED_PRODUCTS_PER_PAGE = 16   # 80 % des 20 items par page
-FEED_VIDEOS_PER_PAGE   = 4    # 20 % — 1 vidéo toutes les 4 cartes produit
+FEED_PRODUCTS_PER_PAGE      = 10   # items par page (pages 2+)
+FEED_VIDEOS_PER_PAGE        = 2    # vidéos par page (pages 2+)
+FEED_PRODUCTS_FIRST_PAGE    = 6    # page 1 : moins d'items → premier rendu plus rapide
+FEED_VIDEOS_FIRST_PAGE      = 1    # page 1
+FEED_CACHE_TTL              = 120  # secondes : cache feed personnalisé (2 min)
 
 
 def interleave_feed(products_data, videos_data, ratio=4):
@@ -279,24 +283,51 @@ def _base_video_qs():
 class PopularProductFeed(APIView):
     permission_classes = [AllowAny]
 
-    @method_decorator(cache_page(60 * 15))   # 15 min – same cache key per ?page=N
     def get(self, request, *args, **kwargs):
-        page     = max(1, int(request.query_params.get('page', 1)))
-        p_offset = (page - 1) * FEED_PRODUCTS_PER_PAGE
-        v_offset = (page - 1) * FEED_VIDEOS_PER_PAGE
+        page = max(1, int(request.query_params.get('page', 1)))
 
-        product_qs = (
-            _base_product_qs()
-            .order_by('-views', '-rating', '-date')
-        )
-        video_qs = (
-            _base_video_qs()
-            .order_by('-likes_count')
-        )
+        # Catégories sélectionnées par l'utilisateur invité (onboarding)
+        cats_raw  = request.query_params.get('cats', '').strip()
+        cats_list = sorted([c.strip() for c in cats_raw.split(',') if c.strip()])
+        cats_key  = ','.join(cats_list) if cats_list else 'all'
 
-        total_products = product_qs.count()
-        products_slice = list(product_qs[p_offset: p_offset + FEED_PRODUCTS_PER_PAGE])
-        videos_slice   = list(video_qs[v_offset:  v_offset + FEED_VIDEOS_PER_PAGE])
+        # Cache manuel (clé = page + cats) — 5 min TTL
+        cache_key = f'popular:p{page}:cats={cats_key}'
+        cached    = cache.get(cache_key)
+        if cached is not None:
+            return Response(cached)
+
+        prod_per_page = FEED_PRODUCTS_FIRST_PAGE if page == 1 else FEED_PRODUCTS_PER_PAGE
+        vid_per_page  = FEED_VIDEOS_FIRST_PAGE   if page == 1 else FEED_VIDEOS_PER_PAGE
+
+        if page == 1:
+            p_offset = v_offset = 0
+        else:
+            p_offset = FEED_PRODUCTS_FIRST_PAGE + (page - 2) * FEED_PRODUCTS_PER_PAGE
+            v_offset = FEED_VIDEOS_FIRST_PAGE   + (page - 2) * FEED_VIDEOS_PER_PAGE
+
+        product_qs = _base_product_qs()
+
+        # ── Personnalisation par catégories (invité ou connecté sans intérêts) ─
+        if cats_list:
+            product_qs = product_qs.annotate(
+                cat_match=Case(
+                    When(category__slug__in=cats_list, then=Value(2.0)),
+                    default=Value(0.0),
+                    output_field=FloatField(),
+                )
+            ).order_by('-cat_match', '-views', '-rating', '-date')
+        else:
+            product_qs = product_qs.order_by('-views', '-rating', '-date')
+
+        video_qs = _base_video_qs().order_by('-likes_count')
+
+        # +1 trick pour détecter has_more sans COUNT(*)
+        products_slice = list(product_qs[p_offset: p_offset + prod_per_page + 1])
+        has_more       = len(products_slice) > prod_per_page
+        products_slice = products_slice[:prod_per_page]
+
+        videos_slice = list(video_qs[v_offset: v_offset + vid_per_page])
 
         product_data = ProductFeedSerializer(
             products_slice, many=True, context={'request': request}
@@ -307,12 +338,55 @@ class PopularProductFeed(APIView):
 
         combined = interleave_feed(list(product_data), list(video_data))
 
-        return Response({
+        payload = {
             'results':  combined,
             'page':     page,
-            'has_more': (p_offset + FEED_PRODUCTS_PER_PAGE) < total_products,
-        })
+            'has_more': has_more,
+        }
+        cache.set(cache_key, payload, 300)
+        return Response(payload)
     
+
+class SaveCategoryPreferencesView(APIView):
+    """
+    POST /save-category-preferences/<user_id>/
+    Body: { "categories": ["slug1", "slug2", ...] }
+    Crée/met à jour les CategoryInterest d'un utilisateur qui vient de se connecter
+    après avoir sélectionné des catégories en session invitée (onboarding).
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request, user_id):
+        try:
+            user = User.objects.get(id=user_id)
+        except (User.DoesNotExist, ValueError):
+            return Response({"error": "Utilisateur non trouvé"}, status=404)
+
+        cats = request.data.get("categories", [])
+        if not cats or not isinstance(cats, list):
+            return Response({"error": "Liste de catégories requise"}, status=400)
+
+        saved = []
+        for slug in cats:
+            try:
+                cat = Category.objects.get(slug=slug)
+                obj, created = CategoryInterest.objects.get_or_create(
+                    user=user, category=cat,
+                    defaults={"score": 10.0}
+                )
+                if not created and obj.score < 10.0:
+                    obj.score = 10.0
+                    obj.save(update_fields=["score"])
+                saved.append(slug)
+            except Category.DoesNotExist:
+                pass
+
+        # Invalider le cache feed de cet utilisateur (pages 1-3)
+        for p in range(1, 4):
+            cache.delete(f'feed:u{user_id}:p{p}')
+
+        return Response({"saved": saved, "count": len(saved)})
+
 
 class TrackProductView(APIView):
     permission_classes = [AllowAny]
@@ -429,9 +503,27 @@ class UnifiedFeedAPIView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request, user_id):
-        page     = max(1, int(request.query_params.get('page', 1)))
-        p_offset = (page - 1) * FEED_PRODUCTS_PER_PAGE
-        v_offset = (page - 1) * FEED_VIDEOS_PER_PAGE
+        page = max(1, int(request.query_params.get('page', 1)))
+
+        # ── Cache par (user_id, page) ─────────────────────────────────────────
+        # Réduit les hits DB de façon drastique quand plusieurs utilisateurs
+        # accèdent au feed en même temps. Invalidé automatiquement après TTL.
+        cache_key = f'feed:u{user_id}:p{page}'
+        cached    = cache.get(cache_key)
+        if cached is not None:
+            return Response(cached)
+
+        # Tailles de page : plus petit en page 1 → premier rendu plus rapide
+        prod_per_page  = FEED_PRODUCTS_FIRST_PAGE if page == 1 else FEED_PRODUCTS_PER_PAGE
+        vid_per_page   = FEED_VIDEOS_FIRST_PAGE   if page == 1 else FEED_VIDEOS_PER_PAGE
+
+        # Pour l'offset, les pages 2+ tiennent compte du fait que la page 1 était petite
+        if page == 1:
+            p_offset = 0
+            v_offset = 0
+        else:
+            p_offset = FEED_PRODUCTS_FIRST_PAGE + (page - 2) * FEED_PRODUCTS_PER_PAGE
+            v_offset = FEED_VIDEOS_FIRST_PAGE   + (page - 2) * FEED_VIDEOS_PER_PAGE
 
         product_qs = _base_product_qs()
         video_qs   = _base_video_qs()
@@ -439,12 +531,13 @@ class UnifiedFeedAPIView(APIView):
         # ── Personnalisation (vendeurs suivis + intérêts catégories) ──────────
         try:
             user = User.objects.get(id=user_id)
+            # Requêtes légères en values_list → pas d'hydratation ORM complète
             followed_ids = list(
                 Vendor.objects.filter(followers=user).values_list('id', flat=True)
             )
-            interests    = CategoryInterest.objects.filter(user=user)
+            interests = list(CategoryInterest.objects.filter(user=user).values('category_id', 'score'))
             when_clauses = [
-                When(category_id=i.category_id, then=Value(i.score))
+                When(category_id=i['category_id'], then=Value(i['score']))
                 for i in interests
             ]
 
@@ -466,9 +559,13 @@ class UnifiedFeedAPIView(APIView):
         video_qs = video_qs.order_by('-likes_count')
 
         # ── Slice paginé ──────────────────────────────────────────────────────
-        total_products = product_qs.count()
-        products_slice = list(product_qs[p_offset: p_offset + FEED_PRODUCTS_PER_PAGE])
-        videos_slice   = list(video_qs[v_offset:  v_offset + FEED_VIDEOS_PER_PAGE])
+        # Astuce : on récupère total en même temps que le slice via exists() sur
+        # l'item suivant → évite un COUNT(*) séparé sur de gros tableaux
+        products_slice = list(product_qs[p_offset: p_offset + prod_per_page + 1])
+        has_more       = len(products_slice) > prod_per_page
+        products_slice = products_slice[:prod_per_page]
+
+        videos_slice = list(video_qs[v_offset: v_offset + vid_per_page])
 
         product_data = ProductFeedSerializer(
             products_slice, many=True, context={'request': request}
@@ -479,11 +576,16 @@ class UnifiedFeedAPIView(APIView):
 
         combined = interleave_feed(list(product_data), list(video_data))
 
-        return Response({
+        payload = {
             'results':  combined,
             'page':     page,
-            'has_more': (p_offset + FEED_PRODUCTS_PER_PAGE) < total_products,
-        })
+            'has_more': has_more,
+        }
+
+        # Mettre en cache (TTL court pour garder le feed frais)
+        cache.set(cache_key, payload, FEED_CACHE_TTL)
+
+        return Response(payload)
     
 
 class ProductSoldeAPIView(ListAPIView):

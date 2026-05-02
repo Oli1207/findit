@@ -1,24 +1,38 @@
+import { BASE_URL } from './constants';
+import Cookies from 'js-cookie';
+
 export async function subscribeUserToPush() {
-  const registration = await navigator.serviceWorker.ready;
+  try {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
 
-  const subscription = await registration.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: "BKLIarmloT9mLrNRftuwdF58E9NehmhCKVmOm3Fb-UZBByOryPy4pjLuJ4oBSdMhohNNeBC2j2fyAPDAthDNcYc",
-  });
+    const registration = await navigator.serviceWorker.ready;
 
-  const access = localStorage.getItem("access");
+    const subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: "BKLIarmloT9mLrNRftuwdF58E9NehmhCKVmOm3Fb-UZBByOryPy4pjLuJ4oBSdMhohNNeBC2j2fyAPDAthDNcYc",
+    });
 
-  const res = await fetch("https://backend.findit.deals/api/v1/save-subscription/", {
-    method: "POST",
-    body: JSON.stringify(subscription),
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${access}`,
-    },
-  });
+    // Utilise BASE_URL (résolu via .env.production en build) pour éviter
+    // tout Mixed Content en production
+    const access = Cookies.get('access_token') || localStorage.getItem('access');
 
-  const data = await res.json();
-  console.log("Subscription sent to backend", data);
+    const res = await fetch(`${BASE_URL}save-subscription/`, {
+      method: "POST",
+      body: JSON.stringify(subscription),
+      headers: {
+        "Content-Type": "application/json",
+        ...(access ? { "Authorization": `Bearer ${access}` } : {}),
+      },
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      console.log("Push subscription enregistrée", data);
+    }
+  } catch (err) {
+    // Silencieux — les push ne sont pas critiques
+    console.warn("Push subscription échouée (non bloquant):", err.message);
+  }
 }
 
 
